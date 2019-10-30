@@ -1,0 +1,71 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: health-check
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+    params:
+      - name: js-image
+        type: string
+        default: node:11-stretch
+      - name: tools-image
+        type: string
+        default: docker.io/garagecatalyst/ibmcloud-dev:1.0.8
+  steps:
+    - name: setup
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      env:
+        - name: PIPELINE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['tekton.dev/pipelineRun']
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          # Export project name, version, and build number to ./env-config
+          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/IMAGE_NAME/g"  > ./env-config
+          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/IMAGE_VERSION/g" >> ./env-config
+          BUILD_NUMBER=`echo $PIPELINE_ID | awk -F 'run-' '{print $NF}'`
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> ./env-config
+    - name: health-check
+      image: ${inputs.params.tools-image}
+      workingdir: ${inputs.resources.source.path}
+      envFrom:
+        - configMapRef:
+            name: ibmcloud-config
+        - secretRef:
+            name: ibmcloud-apikey
+      env:
+        - name: HOME
+          value: /home/devops
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          env | sort
+          set -x
+          cat ./env-config
+          . ./env-config
+
+          ENVIRONMENT_NAME=dev
+
+          INGRESS_NAME="${IMAGE_NAME}"
+          INGRESS_HOST=$(kubectl get ingress/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output=jsonpath='{ .spec.rules[0].host }')
+          PORT='80'
+
+          # sleep for 10 seconds to allow enough time for the server to start
+          sleep 30
+
+          if [ $(curl -sL -w "%{http_code}\\n" "http://${INGRESS_HOST}:${PORT}/health" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) == "200" ]; then
+              echo "Successfully reached health endpoint: http://${INGRESS_HOST}:${PORT}/health"
+          echo "====================================================================="
+              else
+          echo "Could not reach health endpoint: http://${INGRESS_HOST}:${PORT}/health"
+              exit 1;
+          fi;
