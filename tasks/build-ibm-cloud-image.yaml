@@ -1,0 +1,112 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: build-image
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+    params:
+      - name: js-image
+        type: string
+        default: node:11-stretch
+      - name: tools-image
+        type: string
+        default: docker.io/garagecatalyst/ibmcloud-dev:1.0.8
+  steps:
+    - name: setup
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      env:
+        - name: PIPELINE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['tekton.dev/pipelineRun']
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          # Export project name, version, and build number to ./env-config
+          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/IMAGE_NAME/g"  > ./env-config
+          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/IMAGE_VERSION/g" >> ./env-config
+          BUILD_NUMBER=`echo $PIPELINE_ID | awk -F 'run-' '{print $NF}'`
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> ./env-config
+    - name: build-image
+      image: ${inputs.params.tools-image}
+      workingdir: ${inputs.resources.source.path}
+      envFrom:
+        - configMapRef:
+            name: ibmcloud-config
+        - secretRef:
+            name: ibmcloud-apikey
+      env:
+        - name: HOME
+          value: /home/devops
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+
+          . ./env-config
+
+          if [[ -z "${APIKEY}" ]]; then
+            echo "APIKEY is required"
+            exit 1
+          fi
+
+          if [[ -z "${RESOURCE_GROUP}" ]]; then
+            echo "RESOURCE_GROUP is required"
+            exit 1
+          fi
+
+          if [[ -z "${REGION}" ]]; then
+            echo "REGION is required"
+            exit 1
+          fi
+
+          if [[ -z "${REGISTRY_NAMESPACE}" ]]; then
+            echo "REGISTRY_NAMESPACE is required"
+            exit 1
+          fi
+
+          if [[ -z "${REGISTRY_URL}" ]]; then
+            echo "REGISTRY_URL is required"
+            exit 1
+          fi
+
+          if [[ -z "${IMAGE_NAME}" ]]; then
+            echo "IMAGE_NAME is required"
+            exit 1
+          fi
+
+          if [[ -z "${IMAGE_VERSION}" ]]; then
+            echo "IMAGE_VERSION is required"
+            exit 1
+          fi
+
+          echo "Checking registry namespace: ${REGISTRY_NAMESPACE}"
+          NS=$( ibmcloud cr namespaces | grep ${REGISTRY_NAMESPACE} ||: )
+          if [[ -z "${NS}" ]]; then
+              echo -e "Registry namespace ${REGISTRY_NAMESPACE} not found, creating it."
+              ibmcloud cr namespace-add ${REGISTRY_NAMESPACE}
+          else
+              echo -e "Registry namespace ${REGISTRY_NAMESPACE} found."
+          fi
+
+          echo -e "Existing images in registry"
+          ibmcloud cr images --restrict "${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
+
+          echo -e "=========================================================================================="
+          echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}"
+          set -x
+          ibmcloud cr build -t ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION} .
+          if [[ -n "${BUILD_NUMBER}" ]]; then
+              echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}-${BUILD_NUMBER}"
+              ibmcloud cr image-tag ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION} ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}-${BUILD_NUMBER}
+          fi
+
+          echo -e "Available images in registry"
+          ibmcloud cr images --restrict ${REGISTRY_NAMESPACE}/${IMAGE_NAME}

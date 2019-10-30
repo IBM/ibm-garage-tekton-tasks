@@ -1,0 +1,76 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: js-test
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+    params:
+      - name: js-image
+        type: string
+        default: node:11-stretch
+  stepTemplate:
+    envFrom:
+      - configMapRef:
+          name: pactbroker-config
+  steps:
+    - name: build
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          npm install
+          npm run build
+    - name: test
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          npm test
+    - name: publish-pact
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          if [ -f "test/pact-publish.ts" ]; then
+              npm run pact:publish
+          else 
+              echo "Skipping Pact publish"
+          fi
+    - name: verify-pact
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          if [ -f "test/pact-publish.ts" ]; then
+              npm run pact:verify
+          else 
+              echo "Skipping Pact publish"
+          fi
+    - name: sonar-scan
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          if [[ -z "${SONARQUBE_URL}" ]]; then
+            echo "Skipping Sonar Qube step as Sonar Qube not installed or configured"
+            exit 0
+          fi
+          npm run sonarqube:scan
