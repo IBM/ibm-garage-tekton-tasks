@@ -1,0 +1,89 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: gitops
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+    params:
+      - name: js-image
+        type: string
+        default: node:11-stretch
+      - name: tools-image
+        type: string
+        default: docker.io/garagecatalyst/ibmcloud-dev:1.0.8
+  steps:
+    - name: setup
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      env:
+        - name: PIPELINE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['tekton.dev/pipelineRun']
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          # Export project name, version, and build number to ./env-config
+          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/IMAGE_NAME/g"  > ./env-config
+          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/IMAGE_VERSION/g" >> ./env-config
+          BUILD_NUMBER=`echo $PIPELINE_ID | awk -F 'run-' '{print $NF}'`
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> ./env-config
+    - name: gitops
+      image: ${inputs.params.tools-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          if [[ -z "${GITOPS_CD_URL}" ]]; then
+              echo "Skipping GITOPS step as GITOPS_CD_URL is not installed or configured"
+              exit 0
+          fi
+          if [[ -z "${GITOPS_CD_BRANCH}" ]]; then
+              GITOPS_CD_BRANCH="master"
+          fi
+
+          . ./env-config
+
+          export CHART=$(find . -name Chart\*)
+          echo $CHART
+
+          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          echo $CHART_NAME
+
+          if [[ -n "${BUILD_NUMBER}" ]]; then
+            IMAGE_BUILD_VERSION="${IMAGE_VERSION}-${BUILD_NUMBER}"
+          fi
+
+          # This email is not used and it not valid, you can ignore but git requires it
+          git config --global user.email "jenkins@ibmcloud.com"
+          git config --global user.name "Jenkins Pipeline"
+
+          git clone -b ${GITOPS_CD_BRANCH} ${GITOPS_CD_URL} gitops_cd
+          cd gitops_cd
+
+          echo "Requirements before update"
+          cat "./${IMAGE_NAME}/requirements.yaml"
+
+          # Read the helm repo
+          HELM_REPO=$(yq r ./${IMAGE_NAME}/requirements.yaml 'dependencies[0].repository')
+
+          # Write the updated requirements.yaml
+          echo "dependencies:" > ./requirements.yaml.tmp
+          echo "  - name: ${CHART_NAME}" >> ./requirements.yaml.tmp
+          echo "    version: ${IMAGE_BUILD_VERSION}" >> ./requirements.yaml.tmp
+          echo "    repository: ${HELM_REPO}" >> ./requirements.yaml.tmp
+
+          cp ./requirements.yaml.tmp "./${IMAGE_NAME}/requirements.yaml"
+
+          echo "Requirements after update"
+          cat "./${IMAGE_NAME}/requirements.yaml"
+
+          git add -u
+          git commit -m "Updates ${IMAGE_NAME} to ${IMAGE_BUILD_VERSION}"
+          git push

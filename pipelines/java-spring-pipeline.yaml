@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: java-spring
+spec:
+  resources:
+    - name: git-source
+      type: git
+    - name: docker-image
+      type: image
+  tasks:
+    - name: test
+      taskRef:
+        name: catalyst-spring-boot-test-task
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+    - name: build-image
+      taskRef:
+        name: build-ibm-cloud-image
+      runAfter: [test]
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+    - name: deploy
+      taskRef:
+        name: deploy
+      runAfter: [build-image]
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+    - name: health-check
+      taskRef:
+        name: health-check
+      runAfter: [deploy]
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+    - name: gitops
+      taskRef:
+        name: gitops
+      runAfter: [health-check]
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
