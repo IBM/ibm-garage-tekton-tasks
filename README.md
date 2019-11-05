@@ -14,6 +14,15 @@ Clone this repo.
 git clone https://github.com/ibm-garage-cloud/ibm-garage-tekton-tasks.git
 ```
 
+## Service account to run Pipeline
+
+Create a service account like `pipeline`
+```
+oc create serviceaccount pipeline
+oc adm policy add-scc-to-user privileged -z pipeline
+oc adm policy add-role-to-user edit -z pipeline
+```
+
 ### Create Tasks
 
 Install the tasks.

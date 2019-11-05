@@ -10,52 +10,40 @@ spec:
     params:
       - name: js-image
         type: string
-        default: node:11-stretch
+        default: docker.io/node:12-stretch
       - name: tools-image
         type: string
-        default: docker.io/garagecatalyst/ibmcloud-dev:1.0.8
+        default: docker.io/kabanero/kabanero-utils
   steps:
     - name: setup
       image: ${inputs.params.js-image}
       workingdir: ${inputs.resources.source.path}
-      env:
-        - name: PIPELINE_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.labels['tekton.dev/pipelineRun']
       command: ["/bin/bash"]
       args:
         - -c
         - |
           set -x
           # Export project name, version, and build number to ./env-config
-          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/IMAGE_NAME/g"  > ./env-config
-          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/IMAGE_VERSION/g" >> ./env-config
-          BUILD_NUMBER=`echo $PIPELINE_ID | awk -F 'run-' '{print $NF}'`
-          echo "BUILD_NUMBER=$BUILD_NUMBER" >> ./env-config
+          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
     - name: health-check
       image: ${inputs.params.tools-image}
       workingdir: ${inputs.resources.source.path}
-      envFrom:
-        - configMapRef:
-            name: ibmcloud-config
-        - secretRef:
-            name: ibmcloud-apikey
       env:
-        - name: HOME
-          value: /home/devops
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       command: ["/bin/bash"]
       args:
         - -c
         - |
-          env | sort
           set -x
-          cat ./env-config
+
           . ./env-config
 
-          ENVIRONMENT_NAME=dev
+          ENVIRONMENT_NAME="${NAMESPACE}"
 
-          INGRESS_NAME="${IMAGE_NAME}"
+          INGRESS_NAME="${APP_NAME}"
           INGRESS_HOST=$(kubectl get ingress/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output=jsonpath='{ .spec.rules[0].host }')
           PORT='80'
 

@@ -16,22 +16,27 @@ spec:
         inputs:
           - name: source
             resource: git-source
-    - name: build-image
+    - name: build-push
       taskRef:
-        name: build-ibm-cloud-image
+        name: build-push
       runAfter: [js-test]
       resources:
         inputs:
           - name: source
             resource: git-source
+        outputs:
+          - name: image
+            resource: docker-image
     - name: deploy
       taskRef:
         name: deploy
-      runAfter: [build-image]
+      runAfter: [build-push]
       resources:
         inputs:
           - name: source
             resource: git-source
+          - name: image
+            resource: docker-image
     - name: health-check
       taskRef:
         name: health-check
