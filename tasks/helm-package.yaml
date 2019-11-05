@@ -1,0 +1,199 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: helm-package
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+      - name: image
+        type: image
+    params:
+      - name: js-image
+        type: string
+        default: node:12-stretch
+      - name: tools-image
+        type: string
+        default: docker.io/csantanapr/helm-kubectl
+  steps:
+    - name: setup
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          # Export project name
+          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
+    - name: helm-values
+      image: ${inputs.params.tools-image}
+      workingdir: ${inputs.resources.source.path}
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      envFrom:
+        - configMapRef:
+            name: ibmcloud-config
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+
+          . ./env-config
+
+          ENVIRONMENT_NAME="${NAMESPACE}"
+
+          IMAGE_URL=${inputs.resources.image.url}
+
+          REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
+          REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
+          HASTAG=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print NF-1}')
+          if [ "$HASTAG" = "1"  ]; then
+              IMAGE_NAME=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $1}')
+              IMAGE_VERSION=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $2}')
+          else
+              IMAGE_NAME=$(echo $IMAGE_URL | awk -F / '{print $3}')
+              IMAGE_VERSION=latest
+          fi
+          echo $REGISTRY_URL
+          echo $REGISTRY_NAMESPACE
+          echo $IMAGE_NAME
+          echo $IMAGE_VERSION
+
+          export CHART_ROOT=$(find . -name chart)
+          echo $CHART_ROOT
+
+          export CHART=$(find . -name Chart\*)
+          echo $CHART
+
+          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          echo $CHART_NAME
+
+          CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
+
+          RELEASE_NAME="${APP_NAME}"
+          echo "RELEASE_NAME: $RELEASE_NAME"
+
+          echo "INITIALIZING helm with client-only (no Tiller)"
+          helm init --client-only 1> /dev/null 2> /dev/null
+
+          echo "CHECKING CHART (lint)"
+          helm lint ${CHART_PATH}
+
+          IMAGE_REPOSITORY="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
+
+          # Update helm chart with repository and tag values
+          cat ${CHART_PATH}/values.yaml | \
+              yq w - nameOverride "${APP_NAME}" | \
+              yq w - fullnameOverride "${APP_NAME}" | \
+              yq w - image.repository "${IMAGE_REPOSITORY}" | \
+              yq w - image.tag "${IMAGE_VERSION}" > ./values.yaml.tmp
+          cp ./values.yaml.tmp ${CHART_PATH}/values.yaml
+          cat ${CHART_PATH}/values.yaml
+
+    - name: helm-chart
+      image: ${inputs.params.tools-image}
+      workingdir: ${inputs.resources.source.path}
+      envFrom:
+        - configMapRef:
+            name: artifactory-config
+        - secretRef:
+            name: artifactory-access
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -xe
+
+          . ./env-config
+
+          if [[ -z "${ARTIFACTORY_ENCRPT}" ]]; then
+            echo "ARTIFACTORY_ENCRPT is required from secret artifactory-access"
+            exit 1
+          fi
+
+          if [[ -z "${ARTIFACTORY_USER}" ]]; then
+            echo "ARTIFACTORY_USER is required from secret artifactory-access"
+            exit 1
+          fi
+
+          if [[ -z "${ARTIFACTORY_PASSWORD}" ]]; then
+            echo "ARTIFACTORY_PASSWORD is required from secret artifactory-access"
+            exit 1
+          fi
+
+          if [[ -z "${ARTIFACTORY_URL}" ]]; then
+            echo "ARTIFACTORY_URL is required from config map artifactory-config"
+            exit 1
+          fi
+
+          export CHART_ROOT=$(find . -name chart)
+          echo $CHART_ROOT
+
+          export CHART=$(find . -name Chart\*)
+          echo $CHART
+
+          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          echo $CHART_NAME
+
+          CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
+
+
+          echo "Check if a Generic Local Repo has been created and retrieve the URL for it"
+          export URL=$(curl -s -u${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -X GET "${ARTIFACTORY_URL}/artifactory/api/repositories?type=LOCAL" | jq -r '.[0].url')
+          echo ${URL}
+
+          # Check if the URL is valid and we can continue
+          if [ -n "${URL}" ]; then
+              echo "Successfully read Repo ${URL}"
+          else
+              echo "No Repository Created"
+              exit 1;
+          fi;
+
+          IMAGE_URL=${inputs.resources.image.url}
+
+          REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
+          HASTAG=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print NF-1}')
+          if [ "$HASTAG" = "1"  ]; then
+              IMAGE_VERSION=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $2}')
+          else
+              IMAGE_VERSION=latest
+          fi
+
+          CHART_VERSION=$(cat ${CHART} | yq r - version)
+
+          IMAGE_BUILD_VERSION="${CHART_VERSION}-${IMAGE_VERSION}"
+          REGISTRY_NAMESPACE="${NAMESPACE}"
+          # Package Helm Chart
+          helm package --version ${IMAGE_BUILD_VERSION} ${CHART_PATH}
+
+          # Get the index and re index it with current Helm Chart
+          curl -u${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRPT} -O "${URL}/${REGISTRY_NAMESPACE}/index.yaml"
+
+          if [[ $(cat index.yaml | jq '.errors[0].status') != "404" ]]; then
+              # Merge the chart index with the current index.yaml held in Artifactory
+              echo "Merging Chart into index.yaml for Chart Repository"
+              helm repo index . --url ${URL}/${REGISTRY_NAMESPACE} --merge index.yaml
+          else
+              # Dont Merge this is first time one is being created
+              echo "Creating a new index.yaml for Chart Repository"
+              rm index.yaml
+              helm repo index . --url ${URL}/${REGISTRY_NAMESPACE}
+          fi;
+
+          # Persist the Helm Chart in Artifactory for us by ArgoCD
+          curl -u${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRPT} -i -vvv -T ${CHART_NAME}-${IMAGE_BUILD_VERSION}.tgz "${URL}/${REGISTRY_NAMESPACE}/${CHART_NAME}-${IMAGE_BUILD_VERSION}.tgz"
+
+          # Persist the Helm Chart in Artifactory for us by ArgoCD
+          curl -u${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRPT} -i -vvv -T index.yaml "${URL}/${REGISTRY_NAMESPACE}/index.yaml"
