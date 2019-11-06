@@ -27,7 +27,8 @@ spec:
           set -x
           # Export project name
           npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
-    - name: helm-values
+          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/APP_VERSION/g" >> ./env-config
+    - name: deploy
       image: ${inputs.params.tools-image}
       workingdir: ${inputs.resources.source.path}
       env:
@@ -54,16 +55,14 @@ spec:
           REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
           HASTAG=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print NF-1}')
           if [ "$HASTAG" = "1"  ]; then
-              IMAGE_NAME=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $1}')
               IMAGE_VERSION=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $2}')
           else
-              IMAGE_NAME=$(echo $IMAGE_URL | awk -F / '{print $3}')
               IMAGE_VERSION=latest
           fi
           echo $REGISTRY_URL
           echo $REGISTRY_NAMESPACE
-          echo $IMAGE_NAME
           echo $IMAGE_VERSION
+          IMAGE_BUILD_VERSION="${APP_VERSION}-${IMAGE_VERSION}"
 
           export CHART_ROOT=$(find . -name chart)
           echo $CHART_ROOT
@@ -82,19 +81,30 @@ spec:
           echo "INITIALIZING helm with client-only (no Tiller)"
           helm init --client-only 1> /dev/null 2> /dev/null
 
-          echo "CHECKING CHART (lint)"
-          helm lint ${CHART_PATH}
 
-          IMAGE_REPOSITORY="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
+
+          IMAGE_REPOSITORY="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${APP_NAME}"
 
           # Update helm chart with repository and tag values
           cat ${CHART_PATH}/values.yaml | \
               yq w - nameOverride "${APP_NAME}" | \
               yq w - fullnameOverride "${APP_NAME}" | \
               yq w - image.repository "${IMAGE_REPOSITORY}" | \
-              yq w - image.tag "${IMAGE_VERSION}" > ./values.yaml.tmp
+              yq w - image.tag "${IMAGE_BUILD_VERSION}" > ./values.yaml.tmp
           cp ./values.yaml.tmp ${CHART_PATH}/values.yaml
+          rm ./values.yaml.tmp
           cat ${CHART_PATH}/values.yaml
+
+          # Update Chart name and version
+          cat ${CHART} | \
+              yq w - name "${APP_NAME}" | \
+              yq w - version "${APP_VERSION}" > ${CHART}.tmp
+          cp ${CHART}.tmp ${CHART}
+          rm ${CHART}.tmp
+          cat ${CHART}
+
+          echo "CHECKING CHART (lint)"
+          helm lint ${CHART_PATH}
 
     - name: helm-chart
       image: ${inputs.params.tools-image}
@@ -171,9 +181,8 @@ spec:
               IMAGE_VERSION=latest
           fi
 
-          CHART_VERSION=$(cat ${CHART} | yq r - version)
+          IMAGE_BUILD_VERSION="${APP_VERSION}-${IMAGE_VERSION}"
 
-          IMAGE_BUILD_VERSION="${CHART_VERSION}-${IMAGE_VERSION}"
           REGISTRY_NAMESPACE="${NAMESPACE}"
           # Package Helm Chart
           helm package --version ${IMAGE_BUILD_VERSION} ${CHART_PATH}
