@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: node-typescript
+  name: node-pipeline
 spec:
   resources:
     - name: git-source
@@ -16,9 +16,9 @@ spec:
         inputs:
           - name: source
             resource: git-source
-    - name: build-push
+    - name: build-tag-push
       taskRef:
-        name: build-push
+        name: build-tag-push
       runAfter: [js-test]
       resources:
         inputs:
@@ -45,11 +45,23 @@ spec:
         inputs:
           - name: source
             resource: git-source
-    - name: gitops
+    - name: helm-package
       taskRef:
-        name: gitops
+        name: helm-package
       runAfter: [health-check]
       resources:
         inputs:
           - name: source
             resource: git-source
+          - name: image
+            resource: docker-image
+    - name: gitops
+      taskRef:
+        name: gitops
+      runAfter: [helm-package]
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image

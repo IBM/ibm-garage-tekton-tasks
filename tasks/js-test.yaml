@@ -25,6 +25,11 @@ spec:
         - |
           set -x
           npm install
+          if [ -d client ]; then
+            pushd client
+            npm install
+            popd
+          fi
           npm run build
     - name: test
       image: ${inputs.params.js-image}

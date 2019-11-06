@@ -13,7 +13,7 @@ spec:
         default: docker.io/node:12-stretch
       - name: tools-image
         type: string
-        default: docker.io/kabanero/kabanero-utils
+        default: docker.io/csantanapr/helm-kubectl
   steps:
     - name: setup
       image: ${inputs.params.js-image}
