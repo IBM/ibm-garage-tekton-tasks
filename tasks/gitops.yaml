@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: gitops
+  name: igc-gitops
 spec:
   inputs:
     resources:
@@ -12,10 +12,10 @@ spec:
     params:
       - name: js-image
         type: string
-        default: node:11-stretch
+        default: docker.io/node:12-stretch
       - name: tools-image
         type: string
-        default: docker.io/garagecatalyst/ibmcloud-dev:1.0.8
+        default: docker.io/csantanapr/helm-kubectl
   steps:
     - name: setup
       image: ${inputs.params.js-image}
@@ -31,6 +31,9 @@ spec:
     - name: gitops
       image: ${inputs.params.tools-image}
       workingdir: ${inputs.resources.source.path}
+      envFrom:
+        - configMapRef:
+            name: argocd-config
       command: ["/bin/bash"]
       args:
         - -c

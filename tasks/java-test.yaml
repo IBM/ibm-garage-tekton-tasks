@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: catalyst-spring-boot-test-task
+  name: igc-java-gradle-test
 spec:
   inputs:
     resources:
@@ -15,8 +15,7 @@ spec:
     - name: build
       image: ${inputs.params.gradle-image}
       workingdir: ${inputs.resources.source.path}
-      command:
-        - /bin/bash
+      command: ["/bin/bash"]
       args:
         - -c
         - |
@@ -25,8 +24,7 @@ spec:
     - name: test
       image: ${inputs.params.gradle-image}
       workingdir: ${inputs.resources.source.path}
-      command:
-        - /bin/bash
+      command: ["/bin/bash"]
       args:
         - -c
         - |
@@ -35,14 +33,18 @@ spec:
     - name: sonar-scan
       image: ${inputs.params.gradle-image}
       workingdir: ${inputs.resources.source.path}
-      command:
-        - /bin/bash
+      envFrom:
+        - configMapRef:
+            name: sonarqube-config
+        - secretRef:
+            name: sonarqube-access
+      command: ["/bin/bash"]
       args:
         - -c
         - |
-          if [[ -z "${SONARQUBE_URL}" ]]; then
-            echo "Skipping Sonar Qube step as Sonar Qube not installed or configured"
-            exit 0
-          fi
           set -x
-          ./gradlew -Dsonar.login=${SONARQUBE_USER} -Dsonar.password=${SONARQUBE_PASSWORD} -Dsonar.host.url=${SONARQUBE_URL} sonarqube
+          if [ -n "${SONARQUBE_URL}" ] && [ -n "${SONARQUBE_USER}" ] && [ -n "${SONARQUBE_PASSWORD}" ]; then
+              ./gradlew -Dsonar.login=${SONARQUBE_USER} -Dsonar.password=${SONARQUBE_PASSWORD} -Dsonar.host.url=${SONARQUBE_URL} sonarqube
+          else 
+              echo "Skipping Sonar Qube step"
+          fi

@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: node-pipeline
+  name: igc-nodejs
 spec:
   resources:
     - name: git-source
@@ -9,17 +9,17 @@ spec:
     - name: docker-image
       type: image
   tasks:
-    - name: js-test
+    - name: test
       taskRef:
-        name: js-test
+        name: igc-js-test
       resources:
         inputs:
           - name: source
             resource: git-source
-    - name: build-tag-push
+    - name: build
       taskRef:
-        name: build-tag-push
-      runAfter: [js-test]
+        name: igc-build-tag-push
+      runAfter: [test]
       resources:
         inputs:
           - name: source
@@ -29,26 +29,26 @@ spec:
             resource: docker-image
     - name: deploy
       taskRef:
-        name: deploy
-      runAfter: [build-push]
+        name: igc-deploy
+      runAfter: [build]
       resources:
         inputs:
           - name: source
             resource: git-source
           - name: image
             resource: docker-image
-    - name: health-check
+    - name: health
       taskRef:
-        name: health-check
+        name: igc-health-check
       runAfter: [deploy]
       resources:
         inputs:
           - name: source
             resource: git-source
-    - name: helm-package
+    - name: package
       taskRef:
-        name: helm-package
-      runAfter: [health-check]
+        name: igc-helm-package
+      runAfter: [health]
       resources:
         inputs:
           - name: source
@@ -57,8 +57,8 @@ spec:
             resource: docker-image
     - name: gitops
       taskRef:
-        name: gitops
-      runAfter: [helm-package]
+        name: igc-gitops
+      runAfter: [package]
       resources:
         inputs:
           - name: source

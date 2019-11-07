@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: js-test
+  name: igc-js-test
 spec:
   inputs:
     resources:
@@ -48,7 +48,7 @@ spec:
         - -c
         - |
           set -x
-          if [ -f "test/pact-publish.ts" ]; then
+          if [ -n "${PACTBROKER_URL}" ] && [ -f "test/pact-publish.ts" ]; then
               npm run pact:publish
           else 
               echo "Skipping Pact publish"
@@ -61,7 +61,7 @@ spec:
         - -c
         - |
           set -x
-          if [ -f "test/pact-verify.ts" ]; then
+          if [ -n "${PACTBROKER_URL}" ] && [ -f "test/pact-verify.ts" ]; then
               npm run pact:verify
           else 
               echo "Skipping Pact publish"
@@ -69,13 +69,18 @@ spec:
     - name: sonar-scan
       image: ${inputs.params.js-image}
       workingdir: ${inputs.resources.source.path}
+      envFrom:
+        - configMapRef:
+            name: sonarqube-config
+        - secretRef:
+            name: sonarqube-access
       command: ["/bin/bash"]
       args:
         - -c
         - |
           set -x
-          if [[ -z "${SONARQUBE_URL}" ]]; then
-            echo "Skipping Sonar Qube step as Sonar Qube not installed or configured"
-            exit 0
+          if [ -n "${SONARQUBE_URL}" ] && [ -f "test/sonarqube-scan.ts" ]; then
+              npm run sonarqube:scan
+          else 
+              echo "Skipping Sonar Qube step"
           fi
-          npm run sonarqube:scan
