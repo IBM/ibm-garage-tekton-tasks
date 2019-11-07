@@ -1,0 +1,116 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: igc-deploy
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+      - name: image
+        type: image
+    params:
+      - name: js-image
+        type: string
+        default: docker.io/node:12-stretch
+      - name: tools-image
+        type: string
+        default: docker.io/csantanapr/helm-kubectl
+  steps:
+    - name: setup
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+          # Export project name
+          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
+          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/APP_VERSION/g" >> ./env-config
+    - name: deploy
+      image: ${inputs.params.tools-image}
+      workingdir: ${inputs.resources.source.path}
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      envFrom:
+        - configMapRef:
+            name: ibmcloud-config
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -x
+
+          . ./env-config
+
+          ENVIRONMENT_NAME="${NAMESPACE}"
+
+          IMAGE_URL=${inputs.resources.image.url}
+
+          REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
+          REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
+          HASTAG=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print NF-1}')
+          if [ "$HASTAG" = "1"  ]; then
+              IMAGE_VERSION=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $2}')
+          else
+              IMAGE_VERSION=latest
+          fi
+          echo $REGISTRY_URL
+          echo $REGISTRY_NAMESPACE
+          echo $IMAGE_VERSION
+          IMAGE_BUILD_VERSION="${APP_VERSION}-${IMAGE_VERSION}"
+
+          export CHART_ROOT=$(find . -name chart)
+          echo $CHART_ROOT
+
+          export CHART=$(find . -name Chart\*)
+          echo $CHART
+
+          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          echo $CHART_NAME
+
+          CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
+
+          RELEASE_NAME="${APP_NAME}"
+          echo "RELEASE_NAME: $RELEASE_NAME"
+
+          echo "INITIALIZING helm with client-only (no Tiller)"
+          helm init --client-only 1> /dev/null 2> /dev/null
+
+          echo "CHECKING CHART (lint)"
+          helm lint ${CHART_PATH}
+
+          IMAGE_REPOSITORY="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${APP_NAME}"
+
+          # Update helm chart with repository and tag values
+          cat ${CHART_PATH}/values.yaml | \
+              yq w - nameOverride "${APP_NAME}" | \
+              yq w - fullnameOverride "${APP_NAME}" | \
+              yq w - image.repository "${IMAGE_REPOSITORY}" | \
+              yq w - image.tag "${IMAGE_BUILD_VERSION}" > ./values.yaml.tmp
+          cp ./values.yaml.tmp ${CHART_PATH}/values.yaml
+          cat ${CHART_PATH}/values.yaml
+
+          # Update Chart name and version
+          cat ${CHART} | \
+              yq w - name "${APP_NAME}" | \
+              yq w - version "${APP_VERSION}" > ${CHART}.tmp
+          cp ${CHART}.tmp ${CHART}
+          cat ${CHART}
+
+          # Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
+          helm template ${CHART_PATH} \
+              --name ${RELEASE_NAME} \
+              --namespace ${ENVIRONMENT_NAME} \
+              --set ingress.tlsSecretName="${TLS_SECRET_NAME}" \
+              --set ingress.subdomain="${INGRESS_SUBDOMAIN}" > ./release.yaml
+
+          echo -e "Generated release yaml for: ${ENVIRONMENT_NAME}/${APP_NAME}"
+          cat ./release.yaml
+
+          echo -e "Deploying into: ${ENVIRONMENT_NAME}/${APP_NAME}"
+          kubectl apply -n ${ENVIRONMENT_NAME} -f ./release.yaml

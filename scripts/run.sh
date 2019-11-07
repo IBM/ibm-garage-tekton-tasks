@@ -3,19 +3,19 @@
 set -x
 
 if [ "$1" == "nodejs-typescript" ]; then
-  PIPELINE="nodejs-pipeline"
+  PIPELINE="igc-nodejs"
   GIT="nodejs-typescript-git"
   IMAGE="nodejs-typescript-image"
 elif [ "$1" == "nodejs-react" ]; then
-  PIPELINE="nodejs-pipeline"
+  PIPELINE="igc-nodejs"
   GIT="nodejs-react-git"
   IMAGE="nodejs-react-image"
 elif [ "$1" == "nodejs-angular" ]; then
-  PIPELINE="nodejs-pipeline"
+  PIPELINE="igc-nodejs"
   GIT="nodejs-angular-git"
   IMAGE="nodejs-angular-image"
 elif [ "$1" == "java-spring" ]; then
-  PIPELINE="java-gradle-pipeline"
+  PIPELINE="igc-java-gradle"
   GIT="java-spring-git"
   IMAGE="java-spring-image"
 else 
