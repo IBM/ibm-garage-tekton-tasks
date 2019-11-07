@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: java-spring
+  name: igc-java-gradle
 spec:
   resources:
     - name: git-source
@@ -11,40 +11,57 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: catalyst-spring-boot-test-task
+        name: igc-java-gradle-test
       resources:
         inputs:
           - name: source
             resource: git-source
-    - name: build-image
+    - name: build
       taskRef:
-        name: build-ibm-cloud-image
+        name: igc-build-tag-push
       runAfter: [test]
       resources:
         inputs:
           - name: source
             resource: git-source
+        outputs:
+          - name: image
+            resource: docker-image
     - name: deploy
       taskRef:
-        name: deploy
-      runAfter: [build-image]
+        name: igc-deploy
+      runAfter: [build]
       resources:
         inputs:
           - name: source
             resource: git-source
-    - name: health-check
+          - name: image
+            resource: docker-image
+    - name: health
       taskRef:
-        name: health-check
+        name: igc-health-check
       runAfter: [deploy]
       resources:
         inputs:
           - name: source
             resource: git-source
-    - name: gitops
+    - name: package
       taskRef:
-        name: gitops
-      runAfter: [health-check]
+        name: igc-helm-package
+      runAfter: [health]
       resources:
         inputs:
           - name: source
             resource: git-source
+          - name: image
+            resource: docker-image
+    - name: gitops
+      taskRef:
+        name: igc-gitops
+      runAfter: [package]
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image

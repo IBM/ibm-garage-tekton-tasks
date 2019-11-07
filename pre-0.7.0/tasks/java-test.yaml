@@ -13,8 +13,8 @@ spec:
         default: gradle:jdk11
   steps:
     - name: build
-      image: $(inputs.params.gradle-image)
-      workingdir: $(inputs.resources.source.path)
+      image: ${inputs.params.gradle-image}
+      workingdir: ${inputs.resources.source.path}
       command: ["/bin/bash"]
       args:
         - -c
@@ -22,8 +22,8 @@ spec:
           set -x
           ./gradlew assemble --no-daemon
     - name: test
-      image: $(inputs.params.gradle-image)
-      workingdir: $(inputs.resources.source.path)
+      image: ${inputs.params.gradle-image}
+      workingdir: ${inputs.resources.source.path}
       command: ["/bin/bash"]
       args:
         - -c
@@ -31,8 +31,8 @@ spec:
           set -x
           ./gradlew testClasses --no-daemon
     - name: sonar-scan
-      image: $(inputs.params.gradle-image)
-      workingdir: $(inputs.resources.source.path)
+      image: ${inputs.params.gradle-image}
+      workingdir: ${inputs.resources.source.path}
       envFrom:
         - configMapRef:
             name: sonarqube-config

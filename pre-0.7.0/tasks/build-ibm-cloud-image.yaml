@@ -16,8 +16,8 @@ spec:
         default: docker.io/garagecatalyst/ibmcloud-dev:1.0.8
   steps:
     - name: setup
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
+      image: ${inputs.params.js-image}
+      workingdir: ${inputs.resources.source.path}
       env:
         - name: PIPELINE_ID
           valueFrom:
@@ -34,8 +34,8 @@ spec:
           BUILD_NUMBER=`echo $PIPELINE_ID | awk -F 'run-' '{print $NF}'`
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> ./env-config
     - name: build-image
-      image: $(inputs.params.tools-image)
-      workingdir: $(inputs.resources.source.path)
+      image: ${inputs.params.tools-image}
+      workingdir: ${inputs.resources.source.path}
       envFrom:
         - configMapRef:
             name: ibmcloud-config

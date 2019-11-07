@@ -1,0 +1,88 @@
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nodejs-typescript-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/csantanapr/template-node-typescript
+    - name: revision
+      value: tekton-generic
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nodejs-typescript-image
+spec:
+  type: image
+  params:
+    - name: url
+      value: docker-registry.default.svc:5000/dev-test/template-node-typescript:6236dec
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nodejs-react-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/ibm-garage-cloud/template-node-react
+    - name: revision
+      value: master
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nodejs-react-image
+spec:
+  type: image
+  params:
+    - name: url
+      value: docker-registry.default.svc:5000/dev-test/node-react:29152ee
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nodejs-angular-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/ibm-garage-cloud/template-node-angular
+    - name: revision
+      value: master
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: nodejs-angular-image
+spec:
+  type: image
+  params:
+    - name: url
+      value: docker-registry.default.svc:5000/dev-test/node-angular:77b849
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: java-spring-git
+spec:
+  type: git
+  params:
+    - name: url
+      value: https://github.com/ibm-garage-cloud/template-java-spring
+    - name: revision
+      value: master
+---
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: java-spring-image
+spec:
+  type: image
+  params:
+    - name: url
+      value: docker-registry.default.svc:5000/dev-test/template-java-spring:b3e2c00
