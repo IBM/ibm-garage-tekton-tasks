@@ -30,6 +30,12 @@ IMPORTANT: If Tekton version is lower than `0.7.0` then use the pipeline and tas
 Install the tasks.
 
 ```bash
+kubectl create -f ibm-garage-tekton-tasks/pre-0.7.0/tasks/ -n dev
+```
+
+or for Tekton version `0.7.0`+
+
+```bash
 kubectl create -f ibm-garage-tekton-tasks/tasks/ -n dev
 ```
 
@@ -38,9 +44,14 @@ kubectl create -f ibm-garage-tekton-tasks/tasks/ -n dev
 - Create pipeline for each environment for example the `dev` namespace.
 
 ```bash
-kubectl create -f ibm-garage-tekton-tasks/pipelines/ -n dev
+kubectl create -f ibm-garage-tekton-tasks/pre-0.7.0/pipelines/ -n dev
 ```
 
+or for Tekton version `0.7.0`+
+
+```bash
+kubectl create -f ibm-garage-tekton-tasks/pipelines/ -n dev
+```
 
 ### Create Git Webhook
 

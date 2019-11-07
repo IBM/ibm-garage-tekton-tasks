@@ -17,8 +17,8 @@ spec:
           name: pactbroker-config
   steps:
     - name: build
-      image: ${inputs.params.js-image}
-      workingdir: ${inputs.resources.source.path}
+      image: $(inputs.params.js-image)
+      workingdir: $(inputs.resources.source.path)
       command: ["/bin/bash"]
       args:
         - -c
@@ -32,8 +32,8 @@ spec:
           fi
           npm run build
     - name: test
-      image: ${inputs.params.js-image}
-      workingdir: ${inputs.resources.source.path}
+      image: $(inputs.params.js-image)
+      workingdir: $(inputs.resources.source.path)
       command: ["/bin/bash"]
       args:
         - -c
@@ -41,8 +41,8 @@ spec:
           set -x
           npm test
     - name: publish-pact
-      image: ${inputs.params.js-image}
-      workingdir: ${inputs.resources.source.path}
+      image: $(inputs.params.js-image)
+      workingdir: $(inputs.resources.source.path)
       command: ["/bin/bash"]
       args:
         - -c
@@ -54,8 +54,8 @@ spec:
               echo "Skipping Pact publish"
           fi
     - name: verify-pact
-      image: ${inputs.params.js-image}
-      workingdir: ${inputs.resources.source.path}
+      image: $(inputs.params.js-image)
+      workingdir: $(inputs.resources.source.path)
       command: ["/bin/bash"]
       args:
         - -c
@@ -67,8 +67,8 @@ spec:
               echo "Skipping Pact publish"
           fi
     - name: sonar-scan
-      image: ${inputs.params.js-image}
-      workingdir: ${inputs.resources.source.path}
+      image: $(inputs.params.js-image)
+      workingdir: $(inputs.resources.source.path)
       envFrom:
         - configMapRef:
             name: sonarqube-config

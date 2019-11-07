@@ -16,8 +16,8 @@ spec:
         default: docker.io/csantanapr/helm-kubectl
   steps:
     - name: setup
-      image: ${inputs.params.js-image}
-      workingdir: ${inputs.resources.source.path}
+      image: $(inputs.params.js-image)
+      workingdir: $(inputs.resources.source.path)
       command: ["/bin/bash"]
       args:
         - -c
@@ -26,8 +26,8 @@ spec:
           # Export project name, version, and build number to ./env-config
           npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
     - name: health-check
-      image: ${inputs.params.tools-image}
-      workingdir: ${inputs.resources.source.path}
+      image: $(inputs.params.tools-image)
+      workingdir: $(inputs.resources.source.path)
       env:
         - name: NAMESPACE
           valueFrom:
