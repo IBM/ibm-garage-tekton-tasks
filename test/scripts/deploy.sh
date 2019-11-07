@@ -8,5 +8,5 @@ oc delete pipelineresource --all
 sleep 3
 oc create -f tasks/
 oc create -f pipelines/
-oc create -f resources/
+oc create -f test/resources/
 
