@@ -19,7 +19,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           ./gradlew assemble --no-daemon
     - name: test
       image: ${inputs.params.gradle-image}
@@ -28,7 +28,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           ./gradlew testClasses --no-daemon
     - name: sonar-scan
       image: ${inputs.params.gradle-image}
@@ -42,7 +42,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           if [ -n "${SONARQUBE_URL}" ] && [ -n "${SONARQUBE_USER}" ] && [ -n "${SONARQUBE_PASSWORD}" ]; then
               ./gradlew -Dsonar.login=${SONARQUBE_USER} -Dsonar.password=${SONARQUBE_PASSWORD} -Dsonar.host.url=${SONARQUBE_URL} sonarqube
           else 

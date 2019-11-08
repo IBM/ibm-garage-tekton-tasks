@@ -27,7 +27,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           # Export project name, version, and build number to ./env-config
           npm run env | grep "^npm_package_name" | sed "s/npm_package_name/IMAGE_NAME/g"  > ./env-config
           npm run env | grep "^npm_package_version" | sed "s/npm_package_version/IMAGE_VERSION/g" >> ./env-config
@@ -48,7 +48,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
 
           . ./env-config
 
@@ -101,7 +101,7 @@ spec:
 
           echo -e "=========================================================================================="
           echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}"
-          set -x
+          set -e
           ibmcloud cr build -t ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION} .
           if [[ -n "${BUILD_NUMBER}" ]]; then
               echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}-${BUILD_NUMBER}"

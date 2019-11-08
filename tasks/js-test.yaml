@@ -23,7 +23,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           npm install
           if [ -d client ]; then
             pushd client
@@ -38,7 +38,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           npm test
     - name: publish-pact
       image: $(inputs.params.js-image)
@@ -47,7 +47,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           if [ -n "${PACTBROKER_URL}" ] && [ -f "test/pact-publish.ts" ]; then
               npm run pact:publish
           else 
@@ -60,7 +60,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           if [ -n "${PACTBROKER_URL}" ] && [ -f "test/pact-verify.ts" ]; then
               npm run pact:verify
           else 
@@ -78,7 +78,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           if [ -n "${SONARQUBE_URL}" ] && [ -f "test/sonarqube-scan.ts" ]; then
               npm run sonarqube:scan
           else 
