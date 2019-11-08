@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: igc-js-test
+  name: igc-nodejs-test
 spec:
   inputs:
     resources:
