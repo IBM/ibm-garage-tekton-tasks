@@ -23,35 +23,47 @@ oc adm policy add-scc-to-user privileged -z pipeline
 oc adm policy add-role-to-user edit -z pipeline
 ```
 
+
+
+### Create Pipeline Tasks
+
 IMPORTANT: If Tekton version is lower than `0.7.0` then use the pipeline and tasks from the `pre-0.7.0` directory.
 
-### Create Tasks
+- Create pipelines tasks for each environment for example the `dev` namespace:
 
-Install the tasks.
+    ```bash
+    kubectl create -f ibm-garage-tekton-tasks/pre-0.7.0/tasks/ -n dev
+    ```
 
-```bash
-kubectl create -f ibm-garage-tekton-tasks/pre-0.7.0/tasks/ -n dev
-```
+- If using Tekton version `0.7.0` or greater use this command instead:
 
-or for Tekton version `0.7.0`+
+    ```bash
+    kubectl create -f ibm-garage-tekton-tasks/tasks/ -n dev
+    ```
 
-```bash
-kubectl create -f ibm-garage-tekton-tasks/tasks/ -n dev
-```
+This step will create the following tasks:
+- igc-nodejs-tests
+- igc-java-gradle-tests
+- igc-build-push.yaml
+- igc-build-tag-push.yaml
+- igc-build-tag-push-ibm.yaml
+- igc-deploy
+- igc-health-check
+- igc-helm-package
+- igc-gitops
 
-### Create Pipeline
+### Create Pipelines
 
-- Create pipeline for each environment for example the `dev` namespace.
+- Create pipelines for each environment for example the `dev` namespace.
 
-```bash
-kubectl create -f ibm-garage-tekton-tasks/pre-0.7.0/pipelines/ -n dev
-```
+    ```bash
+    kubectl create -f ibm-garage-tekton-tasks/pre-0.7.0/pipelines/ -n dev
+    ```
 
-or for Tekton version `0.7.0`+
+This step will create following Pipelines:
 
-```bash
-kubectl create -f ibm-garage-tekton-tasks/pipelines/ -n dev
-```
+- igc-java-gradle
+- igc-nodejs
 
 ### Create Git Webhook
 

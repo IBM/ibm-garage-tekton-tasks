@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: igc-ibm-build-tag-push
+  name: igc-build-tag-push-ibm
 spec:
   inputs:
     resources:
@@ -10,30 +10,27 @@ spec:
     params:
       - name: js-image
         type: string
-        default: node:11-stretch
+        default: docker.io/node:12-stretch
       - name: tools-image
         type: string
         default: docker.io/garagecatalyst/ibmcloud-dev:1.0.8
+  outputs:
+    resources:
+      - name: image
+        type: image
   steps:
     - name: setup
       image: $(inputs.params.js-image)
       workingdir: $(inputs.resources.source.path)
-      env:
-        - name: PIPELINE_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.labels['tekton.dev/pipelineRun']
       command: ["/bin/bash"]
       args:
         - -c
         - |
-          set -x
+          set -e
           # Export project name, version, and build number to ./env-config
-          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/IMAGE_NAME/g"  > ./env-config
-          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/IMAGE_VERSION/g" >> ./env-config
-          BUILD_NUMBER=`echo $PIPELINE_ID | awk -F 'run-' '{print $NF}'`
-          echo "BUILD_NUMBER=$BUILD_NUMBER" >> ./env-config
-    - name: build-image
+          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
+          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/APP_VERSION/g" >> ./env-config
+    - name: build
       image: $(inputs.params.tools-image)
       workingdir: $(inputs.resources.source.path)
       envFrom:
@@ -48,7 +45,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
 
           . ./env-config
 
@@ -67,25 +64,28 @@ spec:
             exit 1
           fi
 
-          if [[ -z "${REGISTRY_NAMESPACE}" ]]; then
-            echo "REGISTRY_NAMESPACE is required"
+          if [[ -z "${APP_NAME}" ]]; then
+            echo "APP_NAME is required from package.json"
             exit 1
           fi
 
-          if [[ -z "${REGISTRY_URL}" ]]; then
-            echo "REGISTRY_URL is required"
+          if [[ -z "${APP_VERSION}" ]]; then
+            echo "APP_VERSION is required from package.json"
             exit 1
           fi
 
-          if [[ -z "${IMAGE_NAME}" ]]; then
-            echo "IMAGE_NAME is required"
-            exit 1
-          fi
+          IMAGE_URL=$(outputs.resources.image.url)
 
-          if [[ -z "${IMAGE_VERSION}" ]]; then
-            echo "IMAGE_VERSION is required"
-            exit 1
+          REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
+          REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
+          HASTAG=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print NF-1}')
+          if [ "$HASTAG" = "1"  ]; then
+              BUILD_NUMBER=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $2}')
+          else
+              BUILD_NUMBER=latest
           fi
+          IMAGE_NAME=${APP_NAME}
+          IMAGE_VERSION=${APP_VERSION}
 
           echo "Checking registry namespace: ${REGISTRY_NAMESPACE}"
           NS=$( ibmcloud cr namespaces | grep ${REGISTRY_NAMESPACE} ||: )
@@ -101,12 +101,11 @@ spec:
 
           echo -e "=========================================================================================="
           echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}"
-          set -x
+
           ibmcloud cr build -t ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION} .
-          if [[ -n "${BUILD_NUMBER}" ]]; then
-              echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}-${BUILD_NUMBER}"
-              ibmcloud cr image-tag ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION} ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}-${BUILD_NUMBER}
-          fi
+          echo -e "BUILDING CONTAINER IMAGE: ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}-${BUILD_NUMBER}"
+          ibmcloud cr image-tag ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION} ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}-${BUILD_NUMBER}
+
 
           echo -e "Available images in registry"
           ibmcloud cr images --restrict ${REGISTRY_NAMESPACE}/${IMAGE_NAME}

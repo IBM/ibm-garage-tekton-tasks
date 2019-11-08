@@ -11,7 +11,7 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: igc-js-test
+        name: igc-nodejs-test
       resources:
         inputs:
           - name: source

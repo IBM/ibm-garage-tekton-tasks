@@ -33,7 +33,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
           # Export project name, version, and build number to ./env-config
           npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
           npm run env | grep "^npm_package_version" | sed "s/npm_package_version/APP_VERSION/g" >> ./env-config
@@ -44,7 +44,7 @@ spec:
       args:
         - -c
         - |
-          set -x
+          set -e
 
           . ./env-config
 
