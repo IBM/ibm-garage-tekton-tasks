@@ -27,7 +27,7 @@ oc adm policy add-role-to-user edit -z pipeline
 
 ### Create Pipeline Tasks
 
-IMPORTANT: If Tekton version is lower than `0.7.0` then use the pipeline and tasks from the `pre-0.7.0` directory.
+IMPORTANT: If Tekton version is lower than `0.7.0` then use the tasks from the `pre-0.7.0` directory.
 
 - Create pipelines tasks for each environment for example the `dev` namespace:
 
