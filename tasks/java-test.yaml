@@ -11,6 +11,10 @@ spec:
       - name: gradle-image
         type: string
         default: gradle:jdk11
+  stepTemplate:
+    env:
+      - name: GRADLE_USER_HOME
+        value: $(inputs.resources.source.path)
   steps:
     - name: build
       image: $(inputs.params.gradle-image)
@@ -38,6 +42,9 @@ spec:
             name: sonarqube-config
         - secretRef:
             name: sonarqube-access
+      env:
+        - name: SONAR_USER_HOME
+          value: $(inputs.resources.source.path)
       command: ["/bin/bash"]
       args:
         - -c
