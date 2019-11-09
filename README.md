@@ -57,7 +57,7 @@ This step will create the following tasks:
 - Create pipelines for each environment for example the `dev` namespace.
 
     ```bash
-    kubectl create -f ibm-garage-tekton-tasks/pre-0.7.0/pipelines/ -n dev
+    kubectl create -f ibm-garage-tekton-tasks/pipelines/ -n dev
     ```
 
 This step will create following Pipelines:
