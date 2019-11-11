@@ -1,10 +1,6 @@
-## Tekton Pipelines
+## IBM Cloud Garage Tekton Pipelines
 
-Let us build a tekton pipelines for different templates. For each template, perform the following steps.
-
-1. Install the tasks that are required by the pipeline.
-2. Create the pipeline.
-3. Create git webhook in tekton.
+This repository provides Tekton pipelines and tasks for all nodejs and java application templates.
 
 ### Get the code
 
@@ -12,9 +8,12 @@ Clone this repo.
 
 ```bash
 git clone https://github.com/ibm-garage-cloud/ibm-garage-tekton-tasks.git
+cd ibm-garage-tekton-tasks
 ```
 
 ## Service account to run Pipeline
+
+If you install Tekton using the OpenShift Pipeline Operator on OCP4, a service account `pipeline` is already created and you can skip the following commands.
 
 Create a service account like `pipeline`
 ```
@@ -22,8 +21,6 @@ oc create serviceaccount pipeline
 oc adm policy add-scc-to-user privileged -z pipeline
 oc adm policy add-role-to-user edit -z pipeline
 ```
-
-
 
 ### Create Pipeline Tasks
 
@@ -64,6 +61,40 @@ This step will create following Pipelines:
 
 - igc-java-gradle
 - igc-nodejs
+
+### Manually run a Pipeline
+
+The internal container registry service hostname is different for ocp3 and ocp4 
+- ocp3: `docker-registry.default.svc:5000`
+- ocp4: `image-registry.openshift-image-registry.svc:5000`
+
+To install the input pipeline resources for the respective application template run the following commands:
+
+For ocp4:
+```bash
+OCP=ocp4 kubectl apply -f test/resources/$OCP/
+```
+
+For ocp3:
+```bash
+OCP=ocp3 kubectl apply -f test/resources/$OCP/
+```
+
+- Run a pipeline for one of the application templates using the Tekton CLI `tkn` and the helper script
+    ```bash
+    Usage: ./test/scripts/run.sh [nodesjs-typescript | nodejs-react | nodejs-angular | java-spring]
+    ```
+    For example to run the pipeline for the application template `nodejs-typescript`
+    ```bash
+    ./test/scripts/run.sh nodesjs-typescript
+    ```
+    The script will output the name of the pipelinerun, and a command to follow the logs
+    ```
+    Pipelinerun started: igc-nodejs-run-fqgr7
+
+    In order to track the pipelinerun progress run:
+    tkn pipelinerun logs igc-nodejs-run-fqgr7 -f -n dev
+    ```
 
 ### Create Git Webhook
 
