@@ -72,12 +72,12 @@ To install the input pipeline resources for the respective application template 
 
 For ocp4:
 ```bash
-OCP=ocp4 kubect apply -f test/resources/$OCP/
+OCP=ocp4 kubectl apply -f test/resources/$OCP/
 ```
 
 For ocp3:
 ```bash
-OCP=ocp3 kubect apply -f test/resources/$OCP/
+OCP=ocp3 kubectl apply -f test/resources/$OCP/
 ```
 
 - Run a pipeline for one of the application templates using the Tekton CLI `tkn` and the helper script
