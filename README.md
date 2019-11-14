@@ -69,6 +69,7 @@ This step will create following Pipelines:
   - ocp4: `image-registry.openshift-image-registry.svc:5000`
 
 - To install the input pipeline resources for the respective application template run the following commands:
+    
     For ocp4:
     ```bash
     OCP=ocp4 kubectl apply -f test/resources/$OCP/
@@ -80,6 +81,7 @@ This step will create following Pipelines:
     ```
 
 - Run a pipeline for one of the application templates using the Tekton CLI `tkn` and the helper script
+    
     ```bash
     Usage: ./test/scripts/run.sh [nodesjs-typescript | nodejs-react | nodejs-angular | java-spring]
     ```
