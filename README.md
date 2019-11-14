@@ -64,21 +64,20 @@ This step will create following Pipelines:
 
 ### Manually run a Pipeline
 
-The internal container registry service hostname is different for ocp3 and ocp4 
-- ocp3: `docker-registry.default.svc:5000`
-- ocp4: `image-registry.openshift-image-registry.svc:5000`
+- The internal container registry service hostname is different for ocp3 and ocp4 
+  - ocp3: `docker-registry.default.svc:5000`
+  - ocp4: `image-registry.openshift-image-registry.svc:5000`
 
-To install the input pipeline resources for the respective application template run the following commands:
+- To install the input pipeline resources for the respective application template run the following commands:
+    For ocp4:
+    ```bash
+    OCP=ocp4 kubectl apply -f test/resources/$OCP/
+    ```
 
-For ocp4:
-```bash
-OCP=ocp4 kubectl apply -f test/resources/$OCP/
-```
-
-For ocp3:
-```bash
-OCP=ocp3 kubectl apply -f test/resources/$OCP/
-```
+    For ocp3:
+    ```bash
+    OCP=ocp3 kubectl apply -f test/resources/$OCP/
+    ```
 
 - Run a pipeline for one of the application templates using the Tekton CLI `tkn` and the helper script
     ```bash
