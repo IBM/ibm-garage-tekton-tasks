@@ -94,10 +94,19 @@ spec:
 
           IMAGE_REPOSITORY="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
 
+          INGRESS_ENABLED=true
+          ROUTE_ENABLED=false
+          if [[ "${CLUSTER_TYPE}" == "openshift" ]]; then
+            INGRESS_ENABLED=false
+            ROUTE_ENABLED=true
+          fi
+
           # Update helm chart with repository and tag values
           cat ${CHART_PATH}/values.yaml | \
               yq w - image.repository "${IMAGE_REPOSITORY}" | \
-              yq w - image.tag "${IMAGE_BUILD_VERSION}" > ./values.yaml.tmp
+              yq w - image.tag "${IMAGE_BUILD_VERSION}" | \
+              yq w - ingress.enabled "${INGRESS_ENABLED}" | \
+              yq w - route.enabled "${ROUTE_ENABLED}" > ./values.yaml.tmp
           cp ./values.yaml.tmp ${CHART_PATH}/values.yaml
           cat ${CHART_PATH}/values.yaml
 
