@@ -35,7 +35,9 @@ spec:
         - |
           set -e
           # Export project name, version, and build number to ./env-config
-          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
+          IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed "s/_/-/g")
+
+          echo "IMAGE_NAME=${IMAGE_NAME}" > ./env-config
           npm run env | grep "^npm_package_version" | sed "s/npm_package_version/APP_VERSION/g" >> ./env-config
     - name: build
       image: $(inputs.params.BUILDER_IMAGE)
@@ -54,14 +56,14 @@ spec:
           REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
           IMAGE_NAME=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $1}')
           HASTAG=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print NF-1}')
-          if [ "$HASTAG" = "1"  ]; then
+          if [ "$HASTAG" == "1"  ]; then
               IMAGE_VERSION=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $2}')
           else
               IMAGE_VERSION=latest
           fi
-          IMAGE_BUILD_VERSION="${APP_VERSION}-${IMAGE_VERSION}"
+          IMAGE_BUILD_VERSION=""
 
-          APP_IMAGE_ID="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_BUILD_VERSION}"
+          APP_IMAGE_ID="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${APP_VERSION}-${IMAGE_VERSION}"
           APP_IMAGE="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${APP_VERSION}"
 
           buildah bud  --tls-verify=$(inputs.params.TLSVERIFY) --format=docker -f $(inputs.params.DOCKERFILE) -t ${APP_IMAGE_ID}  $(inputs.params.CONTEXT)

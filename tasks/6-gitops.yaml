@@ -26,7 +26,6 @@ spec:
         - |
           set -e
           # Export project name
-          npm run env | grep "^npm_package_name" | sed "s/npm_package_name/APP_NAME/g"  > ./env-config
           npm run env | grep "^npm_package_version" | sed "s/npm_package_version/APP_VERSION/g" >> ./env-config
     - name: gitops
       image: $(inputs.params.tools-image)
@@ -79,10 +78,10 @@ spec:
           cd gitops_cd
 
           echo "Requirements before update"
-          cat "./${APP_NAME}/requirements.yaml"
+          cat "./${IMAGE_NAME}/requirements.yaml"
 
           # Read the helm repo
-          HELM_REPO=$(yq r ./${APP_NAME}/requirements.yaml 'dependencies[0].repository')
+          HELM_REPO=$(yq r ./${IMAGE_NAME}/requirements.yaml 'dependencies[0].repository')
 
           # Write the updated requirements.yaml
           echo "dependencies:" > ./requirements.yaml.tmp
@@ -90,11 +89,11 @@ spec:
           echo "    version: ${IMAGE_BUILD_VERSION}" >> ./requirements.yaml.tmp
           echo "    repository: ${HELM_REPO}" >> ./requirements.yaml.tmp
 
-          cp ./requirements.yaml.tmp "./${APP_NAME}/requirements.yaml"
+          cp ./requirements.yaml.tmp "./${IMAGE_NAME}/requirements.yaml"
 
           echo "Requirements after update"
-          cat "./${APP_NAME}/requirements.yaml"
+          cat "./${IMAGE_NAME}/requirements.yaml"
 
           git add -u
-          git commit -m "Updates ${APP_NAME} to ${IMAGE_BUILD_VERSION}"
+          git commit -m "Updates ${IMAGE_NAME} to ${IMAGE_BUILD_VERSION}"
           git push

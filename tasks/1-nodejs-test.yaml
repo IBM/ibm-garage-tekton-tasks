@@ -30,7 +30,7 @@ spec:
             npm install
             popd
           fi
-          npm run build
+          npm run build --if-present
     - name: test
       image: $(inputs.params.js-image)
       workingdir: $(inputs.resources.source.path)
@@ -39,7 +39,7 @@ spec:
         - -c
         - |
           set -e
-          npm test
+          CI=true npm test
     - name: publish-pact
       image: $(inputs.params.js-image)
       workingdir: $(inputs.resources.source.path)
@@ -48,8 +48,8 @@ spec:
         - -c
         - |
           set -e
-          if [ -n "${PACTBROKER_URL}" ] && [ -f "test/pact-publish.ts" ]; then
-              npm run pact:publish
+          if [ -n "${PACTBROKER_URL}" ]; then
+              npm run pact:publish --if-present
           else 
               echo "Skipping Pact publish"
           fi
@@ -61,8 +61,8 @@ spec:
         - -c
         - |
           set -e
-          if [ -n "${PACTBROKER_URL}" ] && [ -f "test/pact-verify.ts" ]; then
-              npm run pact:verify
+          if [ -n "${PACTBROKER_URL}" ]; then
+              npm run pact:verify --if-present
           else 
               echo "Skipping Pact publish"
           fi
@@ -82,8 +82,8 @@ spec:
         - -c
         - |
           set -e
-          if [ -n "${SONARQUBE_URL}" ] && [ -f "test/sonarqube-scan.ts" ]; then
-              npm run sonarqube:scan
+          if [ -n "${SONARQUBE_URL}" ]; then
+              npm run sonarqube:scan --if-present
           else 
               echo "Skipping Sonar Qube step"
           fi

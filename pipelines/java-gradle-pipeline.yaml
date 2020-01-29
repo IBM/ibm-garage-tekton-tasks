@@ -19,7 +19,8 @@ spec:
     - name: build
       taskRef:
         name: igc-build-tag-push
-      runAfter: [test]
+      runAfter:
+       - test
       resources:
         inputs:
           - name: source
@@ -30,7 +31,8 @@ spec:
     - name: deploy
       taskRef:
         name: igc-deploy
-      runAfter: [build]
+      runAfter:
+       - build
       resources:
         inputs:
           - name: source
@@ -40,7 +42,8 @@ spec:
     - name: health
       taskRef:
         name: igc-health-check
-      runAfter: [deploy]
+      runAfter:
+       - deploy
       resources:
         inputs:
           - name: source
@@ -48,7 +51,8 @@ spec:
     - name: package
       taskRef:
         name: igc-helm-package
-      runAfter: [health]
+      runAfter:
+       - health
       resources:
         inputs:
           - name: source
@@ -58,7 +62,8 @@ spec:
     - name: gitops
       taskRef:
         name: igc-gitops
-      runAfter: [package]
+      runAfter:
+       - package
       resources:
         inputs:
           - name: source
