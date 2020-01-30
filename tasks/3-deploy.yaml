@@ -121,4 +121,4 @@ spec:
           cat ./release.yaml
 
           echo -e "Deploying into: ${ENVIRONMENT_NAME}/${IMAGE_NAME}"
-          kubectl apply -n ${ENVIRONMENT_NAME} -f ./release.yaml
+          kubectl apply -n ${ENVIRONMENT_NAME} -f ./release.yaml --validate=false
