@@ -153,13 +153,10 @@ spec:
           fi
 
           export CHART_ROOT=$(find . -name chart)
-          echo $CHART_ROOT
+          echo "Chart root: $CHART_ROOT"
 
-          export CHART=$(find . -name Chart\*)
-          echo $CHART
-
-          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
-          echo $CHART_NAME
+          export CHART_NAME="base"
+          echo "Chart name: $CHART_NAME"
 
           CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
 
