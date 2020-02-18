@@ -115,8 +115,10 @@ spec:
       envFrom:
         - configMapRef:
             name: artifactory-config
+            optional: true
         - secretRef:
             name: artifactory-access
+            optional: true
       env:
         - name: NAMESPACE
           valueFrom:

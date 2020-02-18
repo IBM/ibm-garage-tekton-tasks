@@ -15,6 +15,7 @@ spec:
     envFrom:
       - configMapRef:
           name: pactbroker-config
+          optional: true
   steps:
     - name: build
       image: $(inputs.params.js-image)
@@ -72,8 +73,10 @@ spec:
       envFrom:
         - configMapRef:
             name: sonarqube-config
+            optional: true
         - secretRef:
             name: sonarqube-access
+            optional: true
       env:
         - name: SONAR_USER_HOME
           value: $(inputs.resources.source.path)
