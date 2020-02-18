@@ -103,6 +103,7 @@ spec:
 
           # Update helm chart with repository and tag values
           cat ${CHART_PATH}/values.yaml | \
+              yq w - clusterType "${CLUSTER_TYPE}" | \
               yq w - image.repository "${IMAGE_REPOSITORY}" | \
               yq w - image.tag "${IMAGE_BUILD_VERSION}" | \
               yq w - ingress.enabled "${INGRESS_ENABLED}" | \
