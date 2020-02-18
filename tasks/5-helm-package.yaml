@@ -87,6 +87,7 @@ spec:
 
           echo "INITIALIZING helm with client-only (no Tiller)"
           helm init --client-only 1> /dev/null 2> /dev/null
+          echo $(helm version --client)
 
           IMAGE_REPOSITORY="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
 

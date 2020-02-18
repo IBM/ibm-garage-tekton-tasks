@@ -77,6 +77,7 @@ spec:
           if [[ "${CHART_NAME}" != "${IMAGE_NAME}" ]]; then
             cp -R "${CHART_ROOT}/${CHART_NAME}" "${CHART_ROOT}/${IMAGE_NAME}"
             cat "${CHART_ROOT}/${CHART_NAME}/Chart.yaml" | \
+                yq w - apiVersion "v1" | \
                 yq w - name "${IMAGE_NAME}" | \
                 yq w - version "${APP_VERSION}" > "${CHART_ROOT}/${IMAGE_NAME}/Chart.yaml"
           fi
@@ -88,6 +89,7 @@ spec:
 
           echo "INITIALIZING helm with client-only (no Tiller)"
           helm init --client-only 1> /dev/null 2> /dev/null
+          echo $(helm version --client)
 
           echo "CHECKING CHART (lint)"
           helm lint ${CHART_PATH}
