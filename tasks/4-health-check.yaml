@@ -38,22 +38,24 @@ spec:
           INGRESS_NAME=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $1}')
 
           HOST=$(kubectl get ingress/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output="jsonpath={ .spec.rules[0].host }")
+          PROTOCOL="http"
+
           set -e
           if [[ -z "${HOST}" ]]; then
             HOST=$(kubectl get route/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output="jsonpath={ .spec.host }")
+            PROTOCOL="https"
             echo "Found route: ${HOST}"
           else
             echo "Found ingress: ${HOST}"
           fi
-          PORT='80'
 
           # sleep for 10 seconds to allow enough time for the server to start
           sleep 30
 
-          if [[ $(curl -sL -w "%{http_code}\\n" "http://${HOST}:${PORT}/health" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) == "200" ]]; then
-              echo "Successfully reached health endpoint: http://${HOST}:${PORT}/health"
+          if [[ $(curl -sL -w "%{http_code}\\n" "${PROTOCOL}://${HOST}/health" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) == "200" ]]; then
+              echo "Successfully reached health endpoint: ${PROTOCOL}://${HOST}/health"
               echo "====================================================================="
           else
-              echo "Could not reach health endpoint: http://${HOST}:${PORT}/health"
+              echo "Could not reach health endpoint: ${PROTOCOL}://${HOST}/health"
               exit 1
           fi
