@@ -67,20 +67,20 @@ spec:
           export CHART_ROOT=$(find . -name chart)
           echo $CHART_ROOT
 
-          export CHART=$(find . -name Chart\*)
-          echo $CHART
-
-          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          export CHART_NAME="base"
           echo $CHART_NAME
           # Update Chart name and version
           if [[ "${CHART_NAME}" != "${IMAGE_NAME}" ]]; then
             cp -R "${CHART_ROOT}/${CHART_NAME}" "${CHART_ROOT}/${IMAGE_NAME}"
             cat "${CHART_ROOT}/${CHART_NAME}/Chart.yaml" | \
+                yq w - apiVersion "v1" | \
                 yq w - name "${IMAGE_NAME}" | \
                 yq w - version "${APP_VERSION}" > "${CHART_ROOT}/${IMAGE_NAME}/Chart.yaml"
           fi
 
           CHART_PATH="${CHART_ROOT}/${IMAGE_NAME}"
+
+          cat ${CHART_PATH}/Chart.yaml
 
           RELEASE_NAME="${IMAGE_NAME}"
           echo "RELEASE_NAME: $RELEASE_NAME"
