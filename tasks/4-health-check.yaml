@@ -29,8 +29,6 @@ spec:
       args:
         - -c
         - |
-          set -e
-
           ENVIRONMENT_NAME="${NAMESPACE}"
 
           IMAGE_URL=$(inputs.resources.image.url)
@@ -39,11 +37,13 @@ spec:
           REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
           INGRESS_NAME=$(echo $IMAGE_URL | awk -F / '{print $3}' | awk -F : '{print $1}')
 
-          set +e
-          HOST=$(kubectl get ingress/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output="jsonpath='{ .spec.rules[0].host }'")
+          HOST=$(kubectl get ingress/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output="jsonpath={ .spec.rules[0].host }")
           set -e
           if [[ -z "${HOST}" ]]; then
-            HOST=$(kubectl get route/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output="jsonpath='{ .spec.host }'")
+            HOST=$(kubectl get route/${INGRESS_NAME} --namespace ${ENVIRONMENT_NAME} --output="jsonpath={ .spec.host }")
+            echo "Found route: ${HOST}"
+          else
+            echo "Found ingress: ${HOST}"
           fi
           PORT='80'
 
