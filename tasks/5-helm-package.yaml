@@ -194,7 +194,7 @@ spec:
           curl -u${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRPT} -O "${URL}/${REGISTRY_NAMESPACE}/index.yaml"
 
           apiVersion=$(grep apiVersion ./index.yaml | sed -E "s/apiVersion: (.*)/\1/g")
-          if [[ $(cat index.yaml | jq '.errors[0].status') != "404" ]] || [[ -n "${apiVersion}" ]]; then
+          if [[ $(cat index.yaml | jq '.errors[0].status') != "404" ]] && [[ -n "${apiVersion}" ]]; then
               # Merge the chart index with the current index.yaml held in Artifactory
               echo "Merging Chart into index.yaml for Chart Repository"
               helm repo index . --url ${URL}/${REGISTRY_NAMESPACE} --merge index.yaml
