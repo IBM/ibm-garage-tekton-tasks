@@ -59,27 +59,32 @@ spec:
           else
               IMAGE_VERSION=latest
           fi
-          echo $REGISTRY_URL
-          echo $REGISTRY_NAMESPACE
-          echo $IMAGE_VERSION
+          echo "$REGISTRY_URL: $REGISTRY_URL"
+          echo "$REGISTRY_NAMESPACE: $REGISTRY_NAMESPACE"
+          echo "$IMAGE_VERSION: $IMAGE_VERSION"
           IMAGE_BUILD_VERSION="${APP_VERSION}-${IMAGE_VERSION}"
 
           export CHART_ROOT=$(find . -name chart)
-          echo $CHART_ROOT
+          echo "$CHART_ROOT: $CHART_ROOT"
 
           export CHART_NAME="base"
-          echo $CHART_NAME
+          echo "$CHART_NAME: $CHART_NAME"
           # Update Chart name and version
           if [[ "${CHART_NAME}" != "${IMAGE_NAME}" ]]; then
+            echo "Renaming chart from ${CHART_NAME} to ${IMAGE_NAME}"
             cp -R "${CHART_ROOT}/${CHART_NAME}" "${CHART_ROOT}/${IMAGE_NAME}"
             cat "${CHART_ROOT}/${CHART_NAME}/Chart.yaml" | \
                 yq w - apiVersion "v1" | \
                 yq w - name "${IMAGE_NAME}" | \
                 yq w - version "${APP_VERSION}" > "${CHART_ROOT}/${IMAGE_NAME}/Chart.yaml"
+          else
+            echo "Chart name and image name match: ${IMAGE_NAME}"
           fi
 
           CHART_PATH="${CHART_ROOT}/${IMAGE_NAME}"
 
+          echo ""
+          echo "Chart ${CHART_PATH}"
           cat ${CHART_PATH}/Chart.yaml
 
           RELEASE_NAME="${IMAGE_NAME}"
@@ -154,17 +159,16 @@ spec:
           fi
 
           export CHART_ROOT=$(find . -name chart)
-          echo "Chart root: $CHART_ROOT"
+          echo "CHART_ROOT: $CHART_ROOT"
 
-          export CHART_NAME="base"
-          echo "Chart name: $CHART_NAME"
+          export CHART_NAME="${IMAGE_NAME}"
+          echo "CHART_NAME: $CHART_NAME"
 
           CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
 
-
           echo "Check if a Generic Local Repo has been created and retrieve the URL for it"
           export URL=$(curl -s -u${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -X GET "${ARTIFACTORY_URL}/artifactory/api/repositories?type=LOCAL" | jq -r '.[0].url')
-          echo ${URL}
+          echo "Helm repo url: ${URL}"
 
           # Check if the URL is valid and we can continue
           if [ -n "${URL}" ]; then
