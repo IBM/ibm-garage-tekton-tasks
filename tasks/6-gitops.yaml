@@ -24,9 +24,23 @@ spec:
       args:
         - -c
         - |
-          set -e
-          # Export project name
-          npm run env | grep "^npm_package_version" | sed "s/npm_package_version/APP_VERSION/g" >> ./env-config
+          set -x
+          set +e
+          mkdir -p ~/.npm
+          npm config set prefix ~/.npm
+
+          npm i -g release-it
+
+          npx release-it --no-increment \
+            --no-npm \
+            --no-git.commit \
+            --no-git.tag \
+            --no-git.push \
+            --no-git.requireUpstream \
+            --hooks.after:release='echo "IMAGE_VERSION=${version}" > ./env-config; echo "IMAGE_NAME=${repo.project}" >> ./env-config' \
+            --verbose
+
+          cat ./env-config
     - name: gitops
       image: $(inputs.params.tools-image)
       workingdir: $(inputs.resources.source.path)
