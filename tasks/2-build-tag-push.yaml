@@ -44,8 +44,8 @@ spec:
           git checkout ${BRANCH}
           git branch --set-upstream-to=origin/${BRANCH} ${BRANCH}
 
-          git config --global user.name "Jenkins Pipeline"
-          git config --global user.email "jenkins@ibmcloud.com"
+          git config --global user.name "Pipeline"
+          git config --global user.email "pipeline@ibmcloud.com"
 
           mkdir -p ~/.npm
           npm config set prefix ~/.npm
