@@ -1,13 +1,13 @@
 ## IBM Cloud Garage Tekton Pipelines
 
-This repository provides Tekton pipelines and tasks for all nodejs and java application templates.
+This repository provides Tekton pipelines and tasks for all nodejs and java application Code Pattern templates.
 
 ### Get the code
 
 Clone this repo.
 
 ```bash
-git clone https://github.com/ibm-garage-cloud/ibm-garage-tekton-tasks.git
+git clone git@github.com:IBM/ibm-garage-tekton-tasks.git
 cd ibm-garage-tekton-tasks
 ```
 
