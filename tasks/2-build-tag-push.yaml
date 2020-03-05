@@ -42,7 +42,7 @@ spec:
           pwd
 
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-          git fetch origin dev
+          git fetch origin ${BRANCH}
           git checkout -b ${BRANCH}
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
           git branch --set-upstream-to=origin/${BRANCH} $(git rev-parse --abbrev-ref HEAD)
