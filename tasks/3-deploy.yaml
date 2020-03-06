@@ -26,19 +26,9 @@ spec:
         - |
           set -x
           set +e
-          mkdir -p ~/.npm
-          npm config set prefix ~/.npm
 
-          npm i -g release-it
-
-          npx release-it --no-increment \
-            --no-npm \
-            --no-git.commit \
-            --no-git.tag \
-            --no-git.push \
-            --no-git.requireUpstream \
-            --hooks.after:release='echo "IMAGE_VERSION=${version}" > ./env-config; echo "IMAGE_NAME=${repo.project}" >> ./env-config' \
-            --verbose
+          echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
+          echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
 
           cat ./env-config
     - name: deploy

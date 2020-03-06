@@ -39,17 +39,18 @@ spec:
           set -x
           set +e
 
-          pwd
-
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-          git fetch origin ${BRANCH}
-          git checkout -b ${BRANCH}
-          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-          git branch --set-upstream-to=origin/${BRANCH} $(git rev-parse --abbrev-ref HEAD)
+          git fetch origin ${BRANCH} --tags
+          git checkout ${BRANCH}
+          git branch --set-upstream-to=origin/${BRANCH} ${BRANCH}
 
           git config --global user.name "Jenkins Pipeline"
           git config --global user.email "jenkins@ibmcloud.com"
+          git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USER; echo password=\\$GIT_AUTH_PWD; }; f"
 
+          mkdir -p ~/.npm
+          npm config set prefix ~/.npm
+          export PATH=$PATH:~/.npm/bin
           npm i -g release-it
 
           if [[ "${BRANCH}" != "master" ]]; then
@@ -57,12 +58,11 @@ spec:
           fi
 
           release-it patch --ci --no-npm ${PRE_RELEASE} \
-            --git.push=false \
-            --git.tagName='v${version}' \
-            --no-git.requireUpstream \
-            --hooks.after:git:release='git push origin v${version}' \
-            --hooks.after:release='echo "IMAGE_VERSION=${version}" > ./env-config; echo "IMAGE_NAME=${repo.project}" >> ./env-config' \
-            --verbose
+            --hooks.after:release='echo "IMAGE_VERSION=${version}" > ./env-config' \
+            --verbose \
+            -VV
+
+          echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
 
           cat ./env-config
     - name: build
