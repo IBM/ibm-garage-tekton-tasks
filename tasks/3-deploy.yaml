@@ -21,11 +21,17 @@ spec:
       image: $(inputs.params.js-image)
       workingdir: $(inputs.resources.source.path)
       command: ["/bin/bash"]
+      env:
+        - name: BRANCH
+          value: "$(inputs.resources.source.revision)"
       args:
         - -c
         - |
           set -x
           set +e
+
+          git fetch origin ${BRANCH} --tags
+          git checkout ${BRANCH}
 
           echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
           echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
