@@ -40,6 +40,9 @@ spec:
     - name: gitops
       image: $(inputs.params.tools-image)
       workingdir: $(inputs.resources.source.path)
+      env:
+        - name: HOME
+          value: /home/devops
       envFrom:
         - secretRef:
             name: gitops-cd-secret
