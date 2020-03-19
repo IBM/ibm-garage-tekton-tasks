@@ -52,8 +52,15 @@ spec:
         - -c
         - |
           set -e
-          if [ -n "${SONARQUBE_URL}" ] && [ -n "${SONARQUBE_USER}" ] && [ -n "${SONARQUBE_PASSWORD}" ]; then
+          if [[ $(./gradlew tasks --all | grep -Eq "^sonarqube") ]]; then
+              echo "SonarQube task found"
+          else
+              echo "Skipping SonarQube step, no task defined"
+              exit 0
+          fi
+
+          if [[ -n "${SONARQUBE_URL}" ]] && [[ -n "${SONARQUBE_USER}" ]] && [[ -n "${SONARQUBE_PASSWORD}" ]]; then
               ./gradlew -Dsonar.login=${SONARQUBE_USER} -Dsonar.password=${SONARQUBE_PASSWORD} -Dsonar.host.url=${SONARQUBE_URL} sonarqube
           else 
-              echo "Skipping Sonar Qube step"
+              echo "Skipping SonarQube step, configuration not provided"
           fi
