@@ -15,7 +15,7 @@ spec:
         default: node:12-stretch
       - name: tools-image
         type: string
-        default: docker.io/csantanapr/helm-kubectl
+        default: garagecatalyst/ibmcloud-dev:1.0.10
   steps:
     - name: setup
       image: $(inputs.params.js-image)
@@ -69,10 +69,14 @@ spec:
           echo "$IMAGE_VERSION: $IMAGE_VERSION"
 
           export CHART_ROOT=$(find . -name chart)
-          echo "$CHART_ROOT: $CHART_ROOT"
+          echo "CHART_ROOT: $CHART_ROOT"
 
-          export CHART_NAME="base"
-          echo "$CHART_NAME: $CHART_NAME"
+          export CHART=$(find . -name Chart\*)
+          echo "CHART: $CHART"
+
+          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          echo "CHART_NAME: $CHART_NAME"
+
           # Update Chart name and version
           if [[ "${CHART_NAME}" != "${IMAGE_NAME}" ]]; then
             echo "Renaming chart from ${CHART_NAME} to ${IMAGE_NAME}"
@@ -109,6 +113,8 @@ spec:
 
           # Update helm chart with repository and tag values
           cat ${CHART_PATH}/values.yaml | \
+              yq w - nameOverride "${IMAGE_NAME}" | \
+              yq w - fullnameOverride "${IMAGE_NAME}" | \
               yq w - image.repository "${IMAGE_REPOSITORY}" | \
               yq w - image.tag "${IMAGE_VERSION}" | \
               yq w - ingress.enabled "${INGRESS_ENABLED}" | \

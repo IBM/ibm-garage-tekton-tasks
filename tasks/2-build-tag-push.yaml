@@ -46,7 +46,6 @@ spec:
 
           git config --global user.name "Jenkins Pipeline"
           git config --global user.email "jenkins@ibmcloud.com"
-          git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USER; echo password=\\$GIT_AUTH_PWD; }; f"
 
           mkdir -p ~/.npm
           npm config set prefix ~/.npm
@@ -64,7 +63,15 @@ spec:
 
           echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
 
-          cat ./env-config
+          source ./env-config
+          if [[ -z "${IMAGE_VERSION}" ]]; then
+              echo "Error: IMAGE_VERSION not defined"
+              exit 1
+          fi
+          if [[ -z "${IMAGE_NAME}" ]]; then
+              echo "Error: IMAGE_NAME not defined"
+              exit 1
+          fi
     - name: build
       image: $(inputs.params.BUILDER_IMAGE)
       workingdir: $(inputs.resources.source.path)
