@@ -120,6 +120,8 @@ spec:
 
           # Update helm chart with repository and tag values
           cat ${CHART_PATH}/values.yaml | \
+              yq w - nameOverride "${IMAGE_NAME}" | \
+              yq w - fullnameOverride "${IMAGE_NAME}" | \
               yq w - image.repository "${IMAGE_REPOSITORY}" | \
               yq w - image.tag "${IMAGE_VERSION}" | \
               yq w - ingress.enabled "${INGRESS_ENABLED}" | \
