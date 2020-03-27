@@ -1,0 +1,74 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: igc-appmod-liberty
+spec:
+  resources:
+    - name: git-source
+      type: git
+    - name: docker-image
+      type: image
+  tasks:
+    - name: test
+      taskRef:
+        name: igc-java-maven-test
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+    - name: build
+      taskRef:
+        name: igc-build-tag-push
+      runAfter:
+       - test
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+        outputs:
+          - name: image
+            resource: docker-image
+    - name: deploy
+      taskRef:
+        name: igc-deploy
+      runAfter:
+       - build
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
+    - name: health
+      taskRef:
+        name: igc-health-check
+      runAfter:
+       - deploy
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
+    - name: package
+      taskRef:
+        name: igc-helm-package
+      runAfter:
+       - health
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
+    - name: gitops
+      taskRef:
+        name: igc-gitops
+      runAfter:
+       - package
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
