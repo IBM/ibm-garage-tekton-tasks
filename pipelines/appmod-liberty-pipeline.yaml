@@ -41,7 +41,7 @@ spec:
             resource: docker-image
     - name: health
       taskRef:
-        name: igc-health-check
+        name: igc-liberty-server-check
       runAfter:
        - deploy
       resources:
