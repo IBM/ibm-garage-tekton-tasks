@@ -1,0 +1,54 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: igc-liberty-server-check
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+      - name: image
+        type: image
+    params:
+      - name: js-image
+        type: string
+        default: docker.io/node:12-stretch
+      - name: tools-image
+        type: string
+        default: garagecatalyst/ibmcloud-dev:1.0.10
+  steps:
+    - name: health-check
+      image: $(inputs.params.tools-image)
+      workingdir: $(inputs.resources.source.path)
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      envFrom:
+        - configMapRef:
+            name: ibmcloud-config
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          ENVIRONMENT_NAME="${NAMESPACE}"
+
+          IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')
+
+          if [[ "${CLUSTER_TYPE}" == "openshift" ]]; then
+              ROUTE_HOST=$(kubectl get route/${IMAGE_NAME} --namespace ${ENVIRONMENT_NAME} --output=jsonpath='{ .spec.host }')
+              URL="https://${ROUTE_HOST}"
+          else
+              INGRESS_HOST=$(kubectl get ingress/${IMAGE_NAME} --namespace ${ENVIRONMENT_NAME} --output=jsonpath='{ .spec.rules[0].host }')
+              URL="http://${INGRESS_HOST}"
+          fi
+          # sleep for 10 seconds to allow enough time for the server to start
+          sleep 30
+          if [[ $(curl -sLk -w "%{http_code}\\n" "${URL}" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) == "200" ]]; then
+              echo "Successfully reached Liberty Server endpoint: ${URL}"
+              echo "====================================================================="
+          else
+              echo "Could not reach Liberty Server endpoint: ${URL}"
+              exit 1;
+          fi;

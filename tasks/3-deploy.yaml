@@ -87,7 +87,7 @@ spec:
           export CHART_ROOT=$(find . -name chart)
           echo "CHART_ROOT: $CHART_ROOT"
 
-          export CHART=$(find . -name Chart\*)
+          export CHART=$(find . -name Chart*.yaml)
           echo "CHART: $CHART"
 
           export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
