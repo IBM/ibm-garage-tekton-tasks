@@ -54,23 +54,23 @@ spec:
           set -e
           if [[ -z "${username}" ]]; then
               echo "'username' not set. Not triggering CD pipeline"
-              exit 1
+              exit 0
           fi
           if [[ -z "${password}" ]]; then
               echo "'password' not set. Not triggering CD pipeline"
-              exit 1
+              exit 0
           fi
           if [[ -z "${host}" ]]; then
               echo "'host' not set. Not triggering CD pipeline"
-              exit 1
+              exit 0
           fi
           if [[ -z "${org}" ]]; then
               echo "'org' not set. Not triggering CD pipeline"
-              exit 1
+              exit 0
           fi
           if [[ -z "${repo}" ]]; then
               echo "'repo' not set. Not triggering CD pipeline"
-              exit 1
+              exit 0
           fi
           if [[ -z "${branch}" ]]; then
               branch="master"
