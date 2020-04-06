@@ -56,11 +56,15 @@ spec:
               PRE_RELEASE="--preRelease=${BRANCH}"
           fi
 
-          release-it patch --ci --no-npm ${PRE_RELEASE} \
-            --hooks.after:release='echo "IMAGE_VERSION=${version}" > ./env-config' \
+
+          release-it patch ${PRE_RELEASE} \
+            --ci \
+            --no-npm \
+            --no-git.requireCleanWorkingDir \
             --verbose \
             -VV
 
+          echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
           echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
 
           source ./env-config
