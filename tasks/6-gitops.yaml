@@ -44,7 +44,7 @@ spec:
         - name: HOME
           value: /home/devops
       envFrom:
-        - secretRef:
+        - configMapRef:
             name: gitops-cd-secret
             optional: true
       command: ["/bin/bash"]
@@ -52,26 +52,6 @@ spec:
         - -c
         - |
           set -e
-          if [[ -z "${username}" ]]; then
-              echo "'username' not set. Not triggering CD pipeline"
-              exit 0
-          fi
-          if [[ -z "${password}" ]]; then
-              echo "'password' not set. Not triggering CD pipeline"
-              exit 0
-          fi
-          if [[ -z "${host}" ]]; then
-              echo "'host' not set. Not triggering CD pipeline"
-              exit 0
-          fi
-          if [[ -z "${org}" ]]; then
-              echo "'org' not set. Not triggering CD pipeline"
-              exit 0
-          fi
-          if [[ -z "${repo}" ]]; then
-              echo "'repo' not set. Not triggering CD pipeline"
-              exit 0
-          fi
           if [[ -z "${branch}" ]]; then
               branch="master"
           fi
@@ -82,8 +62,7 @@ spec:
           git config --global user.email "cloud-native-toolkit@example.com"
           git config --global user.name "Cloud Native Toolkit Pipeline"
 
-          GIT_URL="https://${username}:${password}@${host}/${org}/${repo}"
-          git clone -b ${branch} ${GIT_URL} gitops_cd
+          git clone -b ${branch} ${url} gitops_cd
           cd gitops_cd
 
           echo "Requirements before update"
