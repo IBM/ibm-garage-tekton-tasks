@@ -52,6 +52,12 @@ spec:
         - -c
         - |
           set -e
+
+          if [[ -z "${url}" ]]; then
+              echo "GitOps repo has not been configured. Skipping trigger step"
+              exit 0
+          fi
+
           if [[ -z "${branch}" ]]; then
               branch="master"
           fi
