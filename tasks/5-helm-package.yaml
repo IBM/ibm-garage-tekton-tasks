@@ -31,6 +31,9 @@ spec:
           set +e
 
           git fetch origin ${BRANCH}
+          git fetch --tags
+          git tag -l
+
           git checkout ${BRANCH}
 
           echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config

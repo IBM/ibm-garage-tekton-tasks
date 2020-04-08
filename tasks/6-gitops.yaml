@@ -30,9 +30,10 @@ spec:
           set -x
           set +e
 
-          git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USER; echo password=\\$GIT_AUTH_PWD; }; f"
-
           git fetch origin ${BRANCH}
+          git fetch --tags
+          git tag -l
+
           git checkout ${BRANCH}
 
           echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
@@ -79,6 +80,8 @@ spec:
           . ./env-config
 
           # This email is not used and is not valid, you can ignore but git requires it
+          git config --local credential.helper "!f() { echo username=$GIT_AUTH_USER; echo password=$GIT_AUTH_PWD; }; f"
+
           git config --global user.email "cloud-native-toolkit@example.com"
           git config --global user.name "Cloud Native Toolkit Pipeline"
 
