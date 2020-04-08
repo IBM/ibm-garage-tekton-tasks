@@ -33,14 +33,28 @@ spec:
       env:
         - name: BRANCH
           value: "$(inputs.resources.source.revision)"
+        - name: GIT_AUTH_USER
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: username
+              optional: true
+        - name: GIT_AUTH_PWD
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: password
+              optional: true
       args:
         - -c
         - |
           set -x
-          set +e
+          set -e
+
+          git config --local credential.helper "!f() { echo username=\\$GIT_AUTH_USER; echo password=\\$GIT_AUTH_PWD; }; f"
 
           echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-          git fetch origin ${BRANCH} --tags
+          git fetch origin ${BRANCH}
           git checkout ${BRANCH}
           git branch --set-upstream-to=origin/${BRANCH} ${BRANCH}
 
