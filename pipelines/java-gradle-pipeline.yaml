@@ -61,7 +61,7 @@ spec:
             resource: git-source
           - name: image
             resource: docker-image
-    - name: package
+    - name: release
       taskRef:
         name: igc-helm-package
       runAfter:
@@ -76,7 +76,7 @@ spec:
       taskRef:
         name: igc-gitops
       runAfter:
-       - package
+       - release
       resources:
         inputs:
           - name: source

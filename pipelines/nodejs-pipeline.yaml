@@ -65,7 +65,7 @@ spec:
       taskRef:
         name: igc-gitops
       runAfter:
-       - package
+       - release
       resources:
         inputs:
           - name: source
