@@ -73,11 +73,18 @@ spec:
               exit 0
           fi
 
+          if [[ -z "${GIT_AUTH_USER}" ]] || [[ -z "${GIT_AUTH_PWD}" ]]; then
+              echo "Credentials for GitOps repo not set"
+              exit 1
+          fi
+
           if [[ -z "${branch}" ]]; then
               branch="master"
           fi
 
           . ./env-config
+
+          echo "Se
 
           # This email is not used and is not valid, you can ignore but git requires it
           git config --local credential.helper "!f() { echo username=$GIT_AUTH_USER; echo password=$GIT_AUTH_PWD; }; f"
