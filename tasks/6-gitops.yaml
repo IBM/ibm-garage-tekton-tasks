@@ -68,7 +68,7 @@ spec:
         - |
           set -e
 
-          if [[ -z "${url}" ]]; then
+          if [[ -z "${host}" ]] || [[ -z "${org} ]] || [[ -z "${repo}" ]]; then
               echo "GitOps repo has not been configured. Skipping trigger step"
               exit 0
           fi
@@ -84,13 +84,13 @@ spec:
 
           . ./env-config
 
-          # This email is not used and is not valid, you can ignore but git requires it
-          git config --local credential.helper "!f() { echo username=$GIT_AUTH_USER; echo password=$GIT_AUTH_PWD; }; f"
 
           git config --global user.email "cloud-native-toolkit@example.com"
           git config --global user.name "Cloud Native Toolkit Pipeline"
 
-          git clone -b ${branch} ${url} gitops_cd
+          GIT_URL="https://${username}:${password}@${host}/${org}/${repo}"
+
+          git clone -b ${branch} ${GIT_URL} gitops_cd
           cd gitops_cd
 
           echo "Requirements before update"
