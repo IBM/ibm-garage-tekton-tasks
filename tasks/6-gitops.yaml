@@ -84,8 +84,6 @@ spec:
 
           . ./env-config
 
-          echo "Se
-
           # This email is not used and is not valid, you can ignore but git requires it
           git config --local credential.helper "!f() { echo username=$GIT_AUTH_USER; echo password=$GIT_AUTH_PWD; }; f"
 
