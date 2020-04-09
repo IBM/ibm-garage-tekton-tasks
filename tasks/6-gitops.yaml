@@ -91,6 +91,8 @@ spec:
 
           GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${host}/${org}/${repo}"
 
+          echo "Cloning repo: https://${username}:xxxx@${host}/${org}/${repo}"
+
           git clone -b ${branch} ${GIT_URL} gitops_cd
           cd gitops_cd
 
