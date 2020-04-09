@@ -1,0 +1,131 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: igc-java-pact-verify
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+    params:
+      - name: gradle-image
+        type: string
+        default: gradle:jdk11
+      - name: tools-image
+        type: string
+        default: garagecatalyst/ibmcloud-dev:1.0.10
+  stepTemplate:
+    env:
+      - name: GRADLE_USER_HOME
+        value: $(inputs.resources.source.path)
+  steps:
+    - name: setup
+      image: $(inputs.params.tools-image)
+      workingdir: $(inputs.resources.source.path)
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: BRANCH
+          value: "$(inputs.resources.source.revision)"
+      envFrom:
+        - configMapRef:
+            name: ibmcloud-config
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+          git fetch --unshallow
+          git fetch --tags
+          git tag -l
+
+          git checkout ${BRANCH}
+
+          IMAGE_VERSION=$(git describe --abbrev=0 --tags)
+          IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')
+
+          if [[ "${CLUSTER_TYPE}" == "openshift" ]]; then
+            HOST=$(kubectl get route/${IMAGE_NAME} --namespace ${NAMESPACE} --output=jsonpath='{ .spec.host }')
+            PROTOCOL="https"
+            PORT="443"
+          else
+            HOST=$(kubectl get ingress/${IMAGE_NAME} --namespace ${NAMESPACE} --output=jsonpath='{ .spec.rules[0].host }')
+            PROTOCOL="http"
+            PORT="80"
+          fi
+
+          echo "IMAGE_VERSION=${IMAGE_VERSION}" > ./env-config
+          echo "IMAGE_NAME=${IMAGE_NAME}" >> ./env-config
+          echo "HOST=${HOST}" >> ./env-config
+          echo "PORT=${PORT}" >> ./env-config
+          echo "PROTOCOL=${PROTOCOL}" >> ./env-config
+
+          chmod a+w ./env-config
+    - name: pact-verify
+      image: $(inputs.params.gradle-image)
+      workingdir: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      envFrom:
+        - configMapRef:
+            name: pactbroker-config
+            optional: true
+        - secretRef:
+            name: pactbroker-access
+            optional: true
+      args:
+        - -c
+        - |
+          set -e
+          if [[ -z "${PACTBROKER_URL}" ]]; then
+            echo "PactBroker url not set. Skipping pact verification"
+            exit 0
+          fi
+
+          set -x
+          . ./env-config
+
+          if ./gradlew tasks --all | grep -Eq "^pactVerify"; then
+              echo "Pact Verify task found"
+          else
+              echo "Skipping Pact Verify step, no task defined"
+              exit 0
+          fi
+
+          ./gradlew pactVerify \
+            -PpactBrokerUrl=${PACTBROKER_URL} \
+            -PpactProtocol=${PROTOCOL} \
+            -PpactHost=${HOST} \
+            -PpactPort=${PORT} \
+            -Ppact.verifier.publishResults=true
+    - name: sonar-scan
+      image: $(inputs.params.gradle-image)
+      workingdir: $(inputs.resources.source.path)
+      envFrom:
+        - configMapRef:
+            name: sonarqube-config
+            optional: true
+        - secretRef:
+            name: sonarqube-access
+            optional: true
+      env:
+        - name: SONAR_USER_HOME
+          value: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+          if $(./gradlew tasks --all | grep -Eq "^sonarqube"); then
+              echo "SonarQube task found"
+          else
+              echo "Skipping SonarQube step, no task defined"
+              exit 0
+          fi
+
+          if [[ -n "${SONARQUBE_URL}" ]] && [[ -n "${SONARQUBE_USER}" ]] && [[ -n "${SONARQUBE_PASSWORD}" ]]; then
+              ./gradlew -Dsonar.login=${SONARQUBE_USER} -Dsonar.password=${SONARQUBE_PASSWORD} -Dsonar.host.url=${SONARQUBE_URL} sonarqube
+          else 
+              echo "Skipping SonarQube step, configuration not provided"
+          fi

@@ -43,7 +43,18 @@ spec:
       taskRef:
         name: igc-health-check
       runAfter:
-       - deploy
+        - deploy
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
+    - name: pact-verify
+      taskRef:
+        name: igc-java-pact-verify
+      runAfter:
+        - health
       resources:
         inputs:
           - name: source
@@ -54,7 +65,7 @@ spec:
       taskRef:
         name: igc-helm-package
       runAfter:
-       - health
+       - pact-verify
       resources:
         inputs:
           - name: source
