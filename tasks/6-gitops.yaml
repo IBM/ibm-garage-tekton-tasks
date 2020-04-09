@@ -88,7 +88,7 @@ spec:
           git config --global user.email "cloud-native-toolkit@example.com"
           git config --global user.name "Cloud Native Toolkit Pipeline"
 
-          GIT_URL="https://${username}:${password}@${host}/${org}/${repo}"
+          GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${host}/${org}/${repo}"
 
           git clone -b ${branch} ${GIT_URL} gitops_cd
           cd gitops_cd
