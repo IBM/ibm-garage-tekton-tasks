@@ -67,6 +67,7 @@ spec:
         - -c
         - |
           set -e
+          set -x
 
           if [[ -z "${host}" ]] || [[ -z "${org} ]] || [[ -z "${repo}" ]]; then
               echo "GitOps repo has not been configured. Skipping trigger step"
