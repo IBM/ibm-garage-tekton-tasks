@@ -59,8 +59,6 @@ spec:
         inputs:
           - name: source
             resource: git-source
-          - name: image
-            resource: docker-image
     - name: release
       taskRef:
         name: igc-helm-package
