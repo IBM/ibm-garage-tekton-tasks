@@ -151,24 +151,19 @@ spec:
 
           . ./env-config
 
-          if [[ -z "${ARTIFACTORY_ENCRYPT}" ]]; then
-            echo "ARTIFACTORY_ENCRYPT is required from secret artifactory-access"
-            exit 0
-          fi
-
-          if [[ -z "${ARTIFACTORY_USER}" ]]; then
-            echo "ARTIFACTORY_USER is required from secret artifactory-access"
-            exit 0
-          fi
-
-          if [[ -z "${ARTIFACTORY_PASSWORD}" ]]; then
-            echo "ARTIFACTORY_PASSWORD is required from secret artifactory-access"
-            exit 0
-          fi
-
           if [[ -z "${ARTIFACTORY_URL}" ]]; then
-            echo "ARTIFACTORY_URL is required from config map artifactory-config"
+            echo "It looks like Artifactory has not been installed (ARTIFACTORY_URL from artifactory-config config map is missing). Skipping step."
             exit 0
+          fi
+
+          if [[ -z "${ARTIFACTORY_USER}" ]] || [[ -z "${ARTIFACTORY_PASSWORD}" ]]; then
+            echo "Something's wrong... The Artifactory url is configured but the Artifactory credentials cannot be found. Check your artifactory-access secret."
+            exit 1
+          fi
+
+          if [[ -z "${ARTIFACTORY_ENCRYPT}" ]]; then
+              echo "It looks like your Artifactory installation is not complete. Please complete the steps found here - http://ibm.biz/complete-setup"
+              exit 1
           fi
 
           IMAGE_URL=$(inputs.resources.image.url)
