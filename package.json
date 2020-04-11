@@ -1,0 +1,39 @@
+{
+  "name": "ibm-garage-tekton-tasks",
+  "version": "1.0.0",
+  "description": "This repository provides Tekton pipelines and tasks for all nodejs and java application Code Pattern templates.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "clean": "rm -rf ./dist",
+    "build": "./bin/package-yaml.sh",
+    "release": "release-it"
+  },
+  "release-it": {
+    "github": {
+      "release": true,
+      "assets": ["./dist/release.yaml"]
+    },
+    "npm": {
+      "publish": false
+    },
+    "hooks": {
+      "after:bump": "./bin/package-yaml.sh ${version}"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IBM/ibm-garage-tekton-tasks.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/IBM/ibm-garage-tekton-tasks/issues"
+  },
+  "homepage": "https://github.com/IBM/ibm-garage-tekton-tasks#readme",
+  "dependencies": {
+    "release-it": "^13.5.2"
+  }
+}

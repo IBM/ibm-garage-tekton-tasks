@@ -1,1 +1,3 @@
-local/node_modules/
+local/
+node_modules/
+dist/

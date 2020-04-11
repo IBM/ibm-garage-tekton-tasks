@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: igc-java-gradle
+  labels:
+    version: 0.0.0
 spec:
   resources:
     - name: git-source
@@ -52,7 +54,7 @@ spec:
             resource: docker-image
     - name: pact-verify
       taskRef:
-        name: igc-java-pact-verify
+        name: igc-gradle-pact-verify
       runAfter:
         - health
       resources:
