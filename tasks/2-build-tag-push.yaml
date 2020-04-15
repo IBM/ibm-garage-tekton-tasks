@@ -64,8 +64,6 @@ spec:
           git fetch --tags
           git tag -l
 
-          git describe --abbrev=0 --tags
-
           git checkout ${BRANCH}
           git branch --set-upstream-to=origin/${BRANCH} ${BRANCH}
 
