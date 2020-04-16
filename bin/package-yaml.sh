@@ -18,7 +18,7 @@ RESOURCE_YAML="${DIST_DIR}/release.yaml"
 
 echo -n "" > "${RESOURCE_YAML}"
 
-YAML_VERSION=$(echo "${VERSION_NUMBER}" | sed -E "s/[.]/-/g" | sed "s/v//g" | sed -E "s/(.*)/v\1/g")
+YAML_VERSION=$(echo "${VERSION_NUMBER}" | sed -E "s/[.]/-/g" | sed "s/^v//g" | sed -E "s/(.*)/v\1/g")
 
 find "${ROOT_DIR}/tasks" -name "*.yaml" | while read -r file; do
   cat "${file}" | \
