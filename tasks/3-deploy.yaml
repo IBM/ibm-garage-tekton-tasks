@@ -40,6 +40,7 @@ spec:
 
           echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
           echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
+          echo "REPO_URL=$(git config --get remote.origin.url)" >> ./env-config
 
           source ./env-config
           if [[ -z "${IMAGE_VERSION}" ]]; then
@@ -58,6 +59,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: BRANCH
+          value: "$(inputs.resources.source.revision)"
       envFrom:
         - configMapRef:
             name: ibmcloud-config
@@ -127,6 +130,8 @@ spec:
           cat ${CHART_PATH}/values.yaml | \
               yq w - nameOverride "${IMAGE_NAME}" | \
               yq w - fullnameOverride "${IMAGE_NAME}" | \
+              yq w - vcsInfo.repoUrl "${REPO_URL}" | \
+              yq w - vcsInfo.branch "${BRANCH}" | \
               yq w - image.repository "${IMAGE_REPOSITORY}" | \
               yq w - image.tag "${IMAGE_VERSION}" | \
               yq w - ingress.enabled "${INGRESS_ENABLED}" | \
