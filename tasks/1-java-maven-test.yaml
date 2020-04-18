@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: igc-java-maven-test
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+    params:
+      - name: maven-image
+        type: string
+        default: maven:3.6.3-jdk-11-slim
+  steps:
+    - name: build
+      image: $(inputs.params.maven-image)
+      workingdir: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+          mvn package
+    - name: test
+      image: $(inputs.params.maven-image)
+      workingdir: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+          mvn test
