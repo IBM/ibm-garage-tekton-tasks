@@ -2,6 +2,20 @@
 
 This repository provides Tekton pipelines and tasks for all nodejs and java application Code Pattern templates.
 
+### Install the tasks and pipelines
+
+The best way to install the tasks and template pipelines is through the versioned releases. The following
+steps will get the tasks installed in your cluster. **Note:** These instructions assume you have already
+logged into the cluster.
+
+1. Look through the releases and select the one that should be installed - https://github.com/IBM/ibm-garage-tekton-tasks/releases
+2. From the command-line, run the following (substituting the `RELEASE` and `NAMESPACE` values as appropriate):
+    ```bash
+    export RELEASE="1.1.1"
+    export NAMESPACE="tools"
+    kubectl apply -n ${NAMESPACE} -f https://github.com/IBM/ibm-garage-tekton-tasks/releases/download/${RELEASE}/release.yaml
+    ```
+
 ### Get the code
 
 Clone this repo.
