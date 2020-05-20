@@ -145,6 +145,12 @@ spec:
         - secretRef:
             name: artifactory-access
             optional: true
+        - configMapRef:
+            name: helm-config
+            optional: true
+        - secretRef:
+            name: helm-access
+            optional: true
       env:
         - name: BRANCH
           value: "$(inputs.resources.source.revision)"
@@ -160,19 +166,36 @@ spec:
 
           . ./env-config
 
-          if [[ -z "${ARTIFACTORY_URL}" ]]; then
-            echo "It looks like Artifactory has not been installed (ARTIFACTORY_URL from artifactory-config config map is missing). Skipping step."
-            exit 0
-          fi
+          if [[ -z "${HELM_URL}" ]] && [[ -z "${HELM_USER}" ]]; then
+            if [[ -z "${ARTIFACTORY_URL}" ]]; then
+              echo "It looks like Artifactory has not been installed (ARTIFACTORY_URL from artifactory-config config map is missing). Skipping step."
+              exit 0
+            fi
 
-          if [[ -z "${ARTIFACTORY_USER}" ]] || [[ -z "${ARTIFACTORY_PASSWORD}" ]]; then
-            echo "Something's wrong... The Artifactory url is configured but the Artifactory credentials cannot be found. Check your artifactory-access secret."
-            exit 1
-          fi
-
-          if [[ -z "${ARTIFACTORY_ENCRYPT}" ]]; then
-              echo "It looks like your Artifactory installation is not complete. Please complete the steps found here - http://ibm.biz/complete-setup"
+            if [[ -z "${ARTIFACTORY_USER}" ]] || [[ -z "${ARTIFACTORY_PASSWORD}" ]]; then
+              echo "Something's wrong... The Artifactory url is configured but the Artifactory credentials cannot be found. Check your artifactory-access secret."
               exit 1
+            fi
+
+            if [[ -z "${ARTIFACTORY_ENCRYPT}" ]]; then
+                echo "It looks like your Artifactory installation is not complete. Please complete the steps found here - http://ibm.biz/complete-setup"
+                exit 1
+            fi
+
+            echo "Check if a Generic Local Repo has been created and retrieve the URL for it"
+            export URL=$(curl -s -u${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -X GET "${ARTIFACTORY_URL}/artifactory/api/repositories?type=LOCAL" | jq -r '.[0].url')
+            echo "Helm repo url: ${URL}"
+
+            # Check if the URL is valid and we can continue
+            if [ -n "${URL}" ]; then
+                echo "Successfully read Repo ${URL}"
+                HELM_URL=${URL}
+                HELM_USER=${ARTIFACTORY_USER}
+                HELM_PASSWORD=${ARTIFACTORY_PASSWORD}
+            else
+                echo "No Repository Created"
+                exit 1;
+            fi
           fi
 
           IMAGE_URL=$(inputs.resources.image.url)
@@ -184,19 +207,6 @@ spec:
           echo "CHART_NAME: $CHART_NAME"
 
           CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
-
-          echo "Check if a Generic Local Repo has been created and retrieve the URL for it"
-          export URL=$(curl -s -u${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -X GET "${ARTIFACTORY_URL}/artifactory/api/repositories?type=LOCAL" | jq -r '.[0].url')
-          echo "Helm repo url: ${URL}"
-
-          # Check if the URL is valid and we can continue
-          if [ -n "${URL}" ]; then
-              echo "Successfully read Repo ${URL}"
-          else
-              echo "No Repository Created"
-              exit 1;
-          fi;
-
           IMAGE_URL=$(inputs.resources.image.url)
 
           REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
@@ -206,22 +216,22 @@ spec:
           helm package --version ${IMAGE_VERSION} ${CHART_PATH}
 
           # Get the index and re index it with current Helm Chart
-          curl -u${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRYPT} -O "${URL}/${REGISTRY_NAMESPACE}/index.yaml"
+          curl -u${HELM_USER}:${HELM_PASSWORD} -O "${HELM_URL}/${REGISTRY_NAMESPACE}/index.yaml"
 
           apiVersion=$(grep apiVersion ./index.yaml | sed -E "s/apiVersion: (.*)/\1/g")
           if [[ $(cat index.yaml | jq '.errors[0].status') != "404" ]] && [[ -n "${apiVersion}" ]]; then
               # Merge the chart index with the current index.yaml held in Artifactory
               echo "Merging Chart into index.yaml for Chart Repository"
-              helm repo index . --url ${URL}/${REGISTRY_NAMESPACE} --merge index.yaml
+              helm repo index . --url ${HELM_URL}/${REGISTRY_NAMESPACE} --merge index.yaml
           else
               # Dont Merge this is first time one is being created
               echo "Creating a new index.yaml for Chart Repository"
               rm index.yaml
-              helm repo index . --url ${URL}/${REGISTRY_NAMESPACE}
+              helm repo index . --url ${HELM_URL}/${REGISTRY_NAMESPACE}
           fi;
 
-          # Persist the Helm Chart in Artifactory for us by ArgoCD
-          curl -u${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRYPT} -i -vvv -T ${CHART_NAME}-${IMAGE_VERSION}.tgz "${URL}/${REGISTRY_NAMESPACE}/${CHART_NAME}-${IMAGE_VERSION}.tgz"
+          # Persist the Helm Chart in Helm repo for us by ArgoCD
+          curl -u${HELM_USER}:${HELM_PASSWORD} -i -vvv -T ${CHART_NAME}-${IMAGE_VERSION}.tgz "${HELM_URL}/${REGISTRY_NAMESPACE}/${CHART_NAME}-${IMAGE_VERSION}.tgz"
 
-          # Persist the Helm Chart in Artifactory for us by ArgoCD
-          curl -u${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRYPT} -i -vvv -T index.yaml "${URL}/${REGISTRY_NAMESPACE}/index.yaml"
+          # Persist the Helm Chart in the helm repo for us by ArgoCD
+          curl -u${HELM_USER}:${HELM_PASSWORD} -i -vvv -T index.yaml "${HELM_URL}/${REGISTRY_NAMESPACE}/index.yaml"
