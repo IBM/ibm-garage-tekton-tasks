@@ -12,6 +12,9 @@
     "release": "release-it"
   },
   "release-it": {
+    "git": {
+      "commitMessage": "Release ${version}\n[skip ci]"
+    },
     "github": {
       "release": true,
       "assets": [
