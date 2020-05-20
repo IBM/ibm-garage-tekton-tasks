@@ -87,7 +87,6 @@ spec:
 
           . ./env-config
 
-
           git config --global user.email "cloud-native-toolkit@example.com"
           git config --global user.name "Cloud Native Toolkit Pipeline"
 
@@ -107,6 +106,11 @@ spec:
 
           echo "Requirements after update"
           cat "./${IMAGE_NAME}/requirements.yaml"
+
+          if [[ $(git status -s | wc -l) -eq 0 ]]; then
+            echo "No changes"
+            exit 0
+          fi
 
           git add -u
           git commit -m "Updates ${IMAGE_NAME} to ${IMAGE_VERSION}"
