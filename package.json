@@ -9,7 +9,7 @@
   "scripts": {
     "clean": "rm -rf ./dist",
     "build": "./bin/package-yaml.sh",
-    "release": "release-it"
+    "release": "release-it minor"
   },
   "release-it": {
     "github": {
