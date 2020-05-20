@@ -1,0 +1,14 @@
+language: node_js
+script:
+  - git fetch --tags
+git:
+  depth: false
+branches:
+  - master
+before_deploy:
+  - npm install
+deploy:
+  provider: script
+  script: bash npm run publish
+  on:
+    branch: master
