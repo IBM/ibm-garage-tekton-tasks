@@ -1,14 +1,26 @@
+dist: bionic
 language: node_js
-script:
-  - git fetch --tags
+node_js:
+  - 12
+sudo: true
+addons:
+  apt:
+    update: true
+cache: # cache npm dependencies to avoid wasting time
+  directories:
+    - $HOME/node_modules
 git:
   depth: false
 branches:
   - master
-before_deploy:
+install:
+  - export TRAVIS_COMMIT_DESCRIPTION=`git log -n 1`
+script:
+  - git config --global user.email $GITHUB_EMAIL
+  - git config --global user.name $GITHUB_USERNAME
+  - git remote rm origin
+  - git remote add origin https://$GITHUB_TOKEN@github.com/$TRAVIS_REPO_SLUG.git
+  - git symbolic-ref HEAD refs/heads/master
   - npm install
-deploy:
-  provider: script
-  script: bash npm run publish
-  on:
-    branch: master
+  - if [[ "$TRAVIS_COMMIT_DESCRIPTION" != *"Release v"* ]];then npm run release -- minor --ci; fi
+  # don't release if the last message matches `Release v*` pattern
