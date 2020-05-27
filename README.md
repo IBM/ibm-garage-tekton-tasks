@@ -11,7 +11,7 @@ logged into the cluster.
 1. Look through the releases and select the one that should be installed - https://github.com/IBM/ibm-garage-tekton-tasks/releases
 2. From the command-line, run the following (substituting the `RELEASE` and `NAMESPACE` values as appropriate):
     ```bash
-    export RELEASE="1.1.1"
+    export RELEASE="1.21.0"
     export NAMESPACE="tools"
     kubectl apply -n ${NAMESPACE} -f https://github.com/IBM/ibm-garage-tekton-tasks/releases/download/${RELEASE}/release.yaml
     ```
