@@ -1,6 +1,6 @@
 {
   "name": "ibm-garage-tekton-tasks",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "description": "This repository provides Tekton pipelines and tasks for all nodejs and java application Code Pattern templates.",
   "main": "index.js",
   "directories": {
