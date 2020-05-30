@@ -64,6 +64,9 @@ spec:
         - configMapRef:
             name: gitops-cd-secret
             optional: true
+        - configMapRef:
+            name: gitops-repo
+            optional: true
       command: ["/bin/bash"]
       args:
         - -c
