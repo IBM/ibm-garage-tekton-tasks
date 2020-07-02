@@ -14,6 +14,8 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - uses: actions/checkout@v2
+
       # Drafts your next Release notes as Pull Requests are merged into "master"
       - name: Create release
         id: create-release
