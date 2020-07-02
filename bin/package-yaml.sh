@@ -31,7 +31,6 @@ find "${ROOT_DIR}/tasks" -name "*.yaml" | while read -r file; do
 done
 find "${ROOT_DIR}/pipelines" -name "*.yaml" | while read -r file; do
   cat "$file" | \
-    perl -0777p -e "s/(metadata:\n +name: [a-z-]+)/\1-${YAML_VERSION}/mg" | \
     perl -0777p -e "s/version: 0.0.0/version: ${VERSION_NUMBER}/g" | \
     perl -0777p -e "s/(taskRef:\n +name: [a-z-]+)/\1-${YAML_VERSION}/mg" >> "${RESOURCE_YAML}"
   echo "---" >> "${RESOURCE_YAML}"
