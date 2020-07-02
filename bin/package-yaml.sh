@@ -18,7 +18,10 @@ RESOURCE_YAML="${DIST_DIR}/release.yaml"
 
 echo -n "" > "${RESOURCE_YAML}"
 
-YAML_VERSION=$(echo "${VERSION_NUMBER}" | sed -E "s/[.]/-/g" | sed "s/^v//g" | sed -E "s/(.*)/v\1/g")
+# remove leading 'v', if present
+VERSION_NUMBER=$(echo "${VERSION_NUMBER}" | sed -E "s/v*(.*)/\1/g")
+# replace dots with dashes and prefix 'v' for yaml version
+YAML_VERSION=$(echo "${VERSION_NUMBER}" | sed -E "s/[.]/-/g" | sed -E "s/(.*)/v\1/g")
 
 find "${ROOT_DIR}/tasks" -name "*.yaml" | while read -r file; do
   cat "${file}" | \
@@ -28,7 +31,6 @@ find "${ROOT_DIR}/tasks" -name "*.yaml" | while read -r file; do
 done
 find "${ROOT_DIR}/pipelines" -name "*.yaml" | while read -r file; do
   cat "$file" | \
-    perl -0777p -e "s/(metadata:\n +name: [a-z-]+)/\1-${YAML_VERSION}/mg" | \
     perl -0777p -e "s/version: 0.0.0/version: ${VERSION_NUMBER}/g" | \
     perl -0777p -e "s/(taskRef:\n +name: [a-z-]+)/\1-${YAML_VERSION}/mg" >> "${RESOURCE_YAML}"
   echo "---" >> "${RESOURCE_YAML}"
