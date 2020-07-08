@@ -1,9 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: igc-java-gradle
-  labels:
-    version: 0.0.0
+  name: igc-appmod-liberty
 spec:
   resources:
     - name: git-source
@@ -13,7 +11,7 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: igc-java-gradle-test
+        name: igc-java-maven-test
       resources:
         inputs:
           - name: source
@@ -46,7 +44,7 @@ spec:
       taskRef:
         name: igc-deploy
       runAfter:
-       - scan
+       - build
       resources:
         inputs:
           - name: source
@@ -55,29 +53,20 @@ spec:
             resource: docker-image
     - name: health
       taskRef:
-        name: igc-health-check
+        name: igc-liberty-server-check
       runAfter:
-        - deploy
+       - deploy
       resources:
         inputs:
           - name: source
             resource: git-source
           - name: image
             resource: docker-image
-    - name: pact-verify
-      taskRef:
-        name: igc-gradle-pact-verify
-      runAfter:
-        - health
-      resources:
-        inputs:
-          - name: source
-            resource: git-source
-    - name: release
+    - name: package
       taskRef:
         name: igc-helm-package
       runAfter:
-       - pact-verify
+       - health
       resources:
         inputs:
           - name: source
@@ -88,7 +77,7 @@ spec:
       taskRef:
         name: igc-gitops
       runAfter:
-       - release
+       - package
       resources:
         inputs:
           - name: source

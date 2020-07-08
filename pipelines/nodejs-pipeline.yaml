@@ -30,11 +30,23 @@ spec:
         outputs:
           - name: image
             resource: docker-image
+    - name: scan
+      taskRef:
+        name: igc-img-scan-ibm
+      runAfter:
+       - build
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+        outputs:
+          - name: image
+            resource: docker-image
     - name: deploy
       taskRef:
         name: igc-deploy
       runAfter:
-       - build
+       - scan
       resources:
         inputs:
           - name: source
