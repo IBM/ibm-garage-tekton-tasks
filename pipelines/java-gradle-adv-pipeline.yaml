@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: igc-nodejs
+  name: igc-java-gradle-adv
   labels:
     version: 0.0.0
 spec:
@@ -13,7 +13,7 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: igc-nodejs-test
+        name: igc-java-gradle-test
       resources:
         inputs:
           - name: source
@@ -30,11 +30,23 @@ spec:
         outputs:
           - name: image
             resource: docker-image
+    - name: scan
+      taskRef:
+        name: igc-img-scan-ibm
+      runAfter:
+       - build
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+        outputs:
+          - name: image
+            resource: docker-image
     - name: deploy
       taskRef:
         name: igc-deploy
       runAfter:
-       - build
+       - scan
       resources:
         inputs:
           - name: source
@@ -45,18 +57,27 @@ spec:
       taskRef:
         name: igc-health-check
       runAfter:
-       - deploy
+        - deploy
       resources:
         inputs:
           - name: source
             resource: git-source
           - name: image
             resource: docker-image
+    - name: pact-verify
+      taskRef:
+        name: igc-gradle-pact-verify
+      runAfter:
+        - health
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
     - name: release
       taskRef:
         name: igc-helm-package
       runAfter:
-       - health
+       - pact-verify
       resources:
         inputs:
           - name: source
