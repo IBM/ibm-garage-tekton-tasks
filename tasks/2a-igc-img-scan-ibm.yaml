@@ -1,13 +1,9 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  creationTimestamp: '2020-04-06T16:20:38Z'
-  generation: 66
   name: igc-img-scan-ibm
-  namespace: dev-aus-va1
-  resourceVersion: '9685204'
-  selfLink: /apis/tekton.dev/v1alpha1/namespaces/dev-aus-va1/tasks/igc-img-scan-ibm
-  uid: e221e855-aa70-4c39-892f-6e41ea4b0c7d
+  labels:
+    version: 0.0.0
 spec:
   inputs:
     params:
