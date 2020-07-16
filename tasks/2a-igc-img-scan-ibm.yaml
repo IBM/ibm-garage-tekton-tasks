@@ -24,23 +24,34 @@ spec:
     - args:
         - '-c'
         - >
-          set -x
-          set +e
-          git fetch origin ${BRANCH} --tags
+          set -x 
+
+          set +e 
+
+          git fetch origin ${BRANCH} --tags 
+
           git checkout ${BRANCH}
-          echo "IMAGE NAME - Setup "
+
+          echo "IMAGE NAME - Setup " 
+
           echo "IMAGE_VERSION1=$(git describe --abbrev=0 --tags)"  >
-          ./env-config
+          ./env-config  
+
           echo "IMAGE_NAME1=$(basename -s .git `git config --get
           remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >>
-          ./env-config
-          source ./env-config
-          echo ${IMAGE_VERSION1}
-          echo ${IMAGE_NAME1}
+          ./env-config  
+
+          source ./env-config    
+
+          echo ${IMAGE_VERSION1}  
+
+          echo ${IMAGE_NAME1}   
+
           if [[ -z "${IMAGE_VERSION1}" ]]; then
               echo "Error: IMAGE_VERSION not defined"
               exit 1
-          fi
+          fi  
+
           if [[ -z "${IMAGE_NAME1}" ]]; then
               echo "Error: IMAGE_NAME not defined"
               exit 1
@@ -54,37 +65,67 @@ spec:
     - args:
         - '-c'
         - >
-          set -e
-          . ./env-config
-          echo "REGISTRYURL + ${REGISTRY_URL}"
-          if [[ "${REGISTRY_URL}" == "*cr.io" ]]; then
-            echo "REGISTRY_URL is not *cr.io"
-            exit 0
-          fi
-          IMAGE_URL=$(outputs.resources.image.url)
-          REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
-          REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
-          echo -e "VA Security Scan image in regisry "
-          echo "Registr URL"  echo
+          set -e 
+
+          . ./env-config 
+
+          echo "REGISTRYURL + ${REGISTRY_URL}" 
+
+          IMAGE_URL=$(outputs.resources.image.url) 
+
+          echo ${IMAGE_URL}
+
+          REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}') 
+
+          echo ${REGISTRY_URL}
+
+          REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}') 
+
+          echo -e "VA Security Scan image in regisry " 
+
+          echo "Registr URL"  
+
+          echo
           ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME1}:${IMAGE_VERSION1}
+
           URL=${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME1}:${IMAGE_VERSION1}
-          echo ${URL}  VA_FLAG=$(ibmcloud cr va
-          ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME1}:${IMAGE_VERSION1}
-          --output json | grep OK)
+
+          ibmcloud login --apikey ${REGISTRY_PASSWORD} -g ${RESOURCE_GROUP} -r
+          ${REGION} 
+
+          ibmcloud cr namespace-list
+
+          echo ${URL}
+
           sleep 2m
-          echo ${VA_FLAG}
-          if [[ -n "${VA_Flag}" ]]; then
-              echo "VA - No Issues in the image"
+
+          VA_FLAG=$(ibmcloud cr va ${URL} --output json | grep OK)
+
+          echo ${VA_FLAG} 
+
+          if [[ -n "${VA_FLAG}" ]]; then
+            echo "VA - No Issues in the image"
           else 
-              echo "VA - Issues in the image"
-              ibmcloud cr va ${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME1}:${IMAGE_VERSION1}
-              exit 1
+            echo "VA - Issues in the image"
+            ibmcloud cr va ${URL} --output json
           fi
       command:
         - /bin/bash
       env:
         - name: HOME
           value: /home/devops
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              key: REGISTRY_USER
+              name: ibmcloud-apikey
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: APIKEY
+              name: ibmcloud-apikey
+              optional: true
       envFrom:
         - configMapRef:
             name: ibmcloud-config
