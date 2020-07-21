@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: igc-java-maven
+  name: igc-golang
   labels:
     version: 0.0.0
 spec:
@@ -13,7 +13,7 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: igc-java-maven-test
+        name: igc-golang-test
       resources:
         inputs:
           - name: source
@@ -52,7 +52,7 @@ spec:
             resource: git-source
           - name: image
             resource: docker-image
-    - name: package
+    - name: release
       taskRef:
         name: igc-helm-package
       runAfter:
@@ -67,7 +67,7 @@ spec:
       taskRef:
         name: igc-gitops
       runAfter:
-       - package
+       - release
       resources:
         inputs:
           - name: source
