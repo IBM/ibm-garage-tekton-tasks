@@ -1,9 +1,9 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: igc-golang
+  name: igc-golang-edge
   annotations:
-    description: Pipeline to build a golang application and push the changes to a GitOps repository
+    description: Pipeline to build a golang application and deploy to edge server in the final step
   labels:
     version: 0.0.0
 spec:
@@ -65,9 +65,9 @@ spec:
             resource: git-source
           - name: image
             resource: docker-image
-    - name: gitops
+    - name: edge-cd
       taskRef:
-        name: igc-gitops
+        name: igc-gitops-edge
       runAfter:
        - release
       resources:

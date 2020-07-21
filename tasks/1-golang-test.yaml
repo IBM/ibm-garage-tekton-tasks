@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
   name: igc-golang-test
+  annotations:
+    description: Executes build, test, and sonarscan logic for a Golang application
   labels:
     version: 0.0.0
 spec:
