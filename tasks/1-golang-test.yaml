@@ -1,0 +1,77 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: igc-golang-test
+  labels:
+    version: 0.0.0
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+    params:
+      - name: golang-image
+        type: string
+        default: golang:stretch
+      - name: sonarqube-cli
+        type: string
+        default: sonarsource/sonar-scanner-cli
+  stepTemplate:
+    envFrom:
+      - configMapRef:
+          name: pactbroker-config
+          optional: true
+  steps:
+    - name: build
+      image: $(inputs.params.golang-image)
+      workingdir: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+          go build ./...
+    - name: test
+      image: $(inputs.params.golang-image)
+      workingdir: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+          go test ./...
+    - name: sonar-scan
+      image: $(inputs.params.sonarqube-cli)
+      workingdir: $(inputs.resources.source.path)
+      envFrom:
+        - configMapRef:
+            name: sonarqube-config
+            optional: true
+        - secretRef:
+            name: sonarqube-access
+            optional: true
+      env:
+        - name: SONAR_USER_HOME
+          value: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+
+          if ! command -v sonar-scanner &> /dev/null
+          then
+              echo "Skipping SonarQube step, no task defined"
+              exit 0
+          fi
+
+          if [ -n "${SONARQUBE_URL}" ]; then
+
+            sonar-scanner \
+            -Dsonar.login=${SONARQUBE_USER} \
+            -Dsonar.password=${SONARQUBE_PASSWORD} \
+            -Dsonar.host.url=${SONARQUBE_URL}
+
+          else
+              echo "Skipping Sonar Qube step for now but include"
+          fi

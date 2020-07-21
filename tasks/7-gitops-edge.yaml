@@ -1,0 +1,117 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: igc-gitops-edge
+  labels:
+    version: 0.0.0
+spec:
+  inputs:
+    resources:
+      - name: source
+        type: git
+      - name: image
+        type: image
+    params:
+      - name: golang-image
+        type: string
+        default: golang:stretch
+      - name: tools-image
+        type: string
+        default: golang:stretch
+  steps:
+    - name: setup
+      image: $(inputs.params.golang-image)
+      workingdir: $(inputs.resources.source.path)
+      command: ["/bin/bash"]
+      env:
+        - name: BRANCH
+          value: "$(inputs.resources.source.revision)"
+      args:
+        - -c
+        - |
+          set -x
+          set +e
+
+          git fetch --unshallow
+          git fetch --tags
+          git tag -l
+
+          git checkout ${BRANCH}
+
+          echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
+          echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
+
+          # Install HZN CLI
+          arch=$(dpkg --print-architecture)
+          dist=bionic
+          version=2.26.12
+          wget http://pkg.bluehorizon.network/linux/ubuntu/pool/main/h/horizon/bluehorizon_${version}~ppa~ubuntu.${dist}_all.deb
+          wget http://pkg.bluehorizon.network/linux/ubuntu/pool/main/h/horizon/horizon-cli_${version}~ppa~ubuntu.${dist}_${arch}.deb
+          wget http://pkg.bluehorizon.network/linux/ubuntu/pool/main/h/horizon/horizon_${version}~ppa~ubuntu.${dist}_${arch}.deb
+          dpkg -i horizon-cli_${version}~ppa~ubuntu.${dist}_${arch}.deb
+          dpkg -i horizon_${version}~ppa~ubuntu.${dist}_${arch}.deb
+          dpkg -i bluehorizon_${version}~ppa~ubuntu.${dist}_all.deb
+
+          cat ./env-config
+
+    - name: gitops-edge
+      image: $(inputs.params.tools-image)
+      workingdir: $(inputs.resources.source.path)
+      env:
+        - name: HOME
+          value: /home/devops
+      envFrom:
+        - configMapRef:
+            name: ibmcloud-config
+            optional: true
+        - secretRef:
+            name: edge-access
+            optional: true
+        - secretRef:
+            name: ibmcloud-apikey
+            optional: true
+
+      command: ["/bin/bash"]
+      args:
+        - -c
+        - |
+          set -e
+          set -x
+
+          if [[ -z "${HZN_EXCHANGE_URL}" ]] ]]; then
+              echo "Edge Exchange has not been configured. Skipping trigger step"
+              exit 0
+          fi
+
+          if [[ -z "${HZN_EXCHANGE_USER_AUTH}" ]] || [[ -z "${HZN_CERTIFICATE}" ]]; then
+              echo "Edge Credentials or Certificate not set"
+              exit 1
+          fi
+
+          if [[ -z "${branch}" ]]; then
+              branch="master"
+          fi
+
+          . ./env-config
+
+          APP_IMAGE="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
+
+          jq -n --arg HZN_ORG_ID $HZN_ORG_ID \
+                --arg APP_IMAGE ${APP_IMAGE} \
+                --arg IMAGE_NAME ${IMAGE_NAME} \
+                --arg IMAGE_VERSION ${IMAGE_VERSION} \
+
+          '{ \
+            "HZN_ORG_ID": "$HZN_ORG_ID", \
+            "MetadataVars": { \
+              "DOCKER_IMAGE_BASE": "$APP_IMAGE", \
+              "SERVICE_NAME": "$IMAGE_NAME", \
+              "SERVICE_VERSION": "$IMAGE_VERSION" \
+            } \
+          }' > ./horizon/hzn.json
+
+          cat ./horizon/hzn.json
+
+          make publish-service
+
+          echo "Edge Service registried"
