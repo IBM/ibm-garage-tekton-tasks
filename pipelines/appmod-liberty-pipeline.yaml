@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: igc-appmod-liberty
+  labels:
+    version: 0.0.0
 spec:
   resources:
     - name: git-source
