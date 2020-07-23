@@ -1,0 +1,97 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: igc-java-gradle-sec
+  labels:
+    version: 0.0.0
+spec:
+  resources:
+    - name: git-source
+      type: git
+    - name: docker-image
+      type: image
+  tasks:
+    - name: test
+      taskRef:
+        name: igc-java-gradle-test
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+    - name: build
+      taskRef:
+        name: igc-build-tag-push
+      runAfter:
+       - test
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+        outputs:
+          - name: image
+            resource: docker-image
+    - name: scan
+      taskRef:
+        name: igc-img-scan-ibm
+      runAfter:
+       - build
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+        outputs:
+          - name: image
+            resource: docker-image
+    - name: deploy
+      taskRef:
+        name: igc-deploy
+      runAfter:
+       - scan
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
+    - name: health
+      taskRef:
+        name: igc-health-check
+      runAfter:
+        - deploy
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
+    - name: pact-verify
+      taskRef:
+        name: igc-gradle-pact-verify
+      runAfter:
+        - health
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+    - name: release
+      taskRef:
+        name: igc-helm-package
+      runAfter:
+       - pact-verify
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
+    - name: gitops
+      taskRef:
+        name: igc-gitops
+      runAfter:
+       - release
+      resources:
+        inputs:
+          - name: source
+            resource: git-source
+          - name: image
+            resource: docker-image
