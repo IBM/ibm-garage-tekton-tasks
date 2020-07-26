@@ -1,0 +1,21 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: igc-nodejs
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+  tasks:
+    - name: test
+      taskRef:
+        name: igc-nodejs-test
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
+
