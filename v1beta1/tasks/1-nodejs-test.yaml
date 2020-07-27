@@ -23,8 +23,27 @@ spec:
   steps:
     - name: git-clone
       image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USER
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
       script: |
-        git clone $(params.git-url) /source
+        if [[ -n "${GIT_USER}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            set +x
+            git clone "https://${GIT_USER}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" /source
+            set -x
+        else
+            git clone $(params.git-url) /source
+        fi
         cd /source
         git checkout $(params.git-revision)
         echo -n "$(git rev-parse --verify HEAD)" | tee $(results.git-commit.path)
