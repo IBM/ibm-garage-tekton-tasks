@@ -1,0 +1,116 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: igc-build-tag-push
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: image-url
+    - name: js-image
+      default: docker.io/node:12-stretch
+    - name: BUILDER_IMAGE
+      default: quay.io/buildah/stable:v1.15.0
+    - name: DOCKERFILE
+      default: ./Dockerfile
+    - name: CONTEXT
+      default: .
+    - name: TLSVERIFY
+      default: "false"
+    - name: FORMAT
+      default: "docker"
+    - name: STORAGE_DRIVER
+      description: Set buildah storage driver
+      default: overlay
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: /source
+  steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USER
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        if [[ -n "${GIT_USER}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            set +x
+            git clone "https://${GIT_USER}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" /source
+            set -x
+        else
+            git clone $(params.git-url) /source
+        fi
+        cd /source
+        git checkout $(params.git-revision)
+        echo "IMAGE_VERSION=$(git rev-parse --verify HEAD --short)" > ./env-config
+        echo "IMAGE_NAME=$(basename $(echo -n $(git config --get remote.origin.url) | awk -F '.git' '{print $2}') | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
+        source ./env-config
+        if [[ -z "${IMAGE_VERSION}" ]]; then
+            echo "Error: IMAGE_VERSION not defined"
+            exit 1
+        fi
+        if [[ -z "${IMAGE_NAME}" ]]; then
+            echo "Error: IMAGE_NAME not defined"
+            exit 1
+        fi
+    - name: build
+      image: $(params.BUILDER_IMAGE)
+      workingdir: /source
+      resources:
+        requests:
+          ephemeral-storage: "2Gi"
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: ibmcloud-apikey
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ibmcloud-apikey
+              key: APIKEY
+              optional: true
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      securityContext:
+        privileged: true
+      script: |
+
+        . ./env-config
+
+        IMAGE_URL=$(params.image-url)
+
+        REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
+        REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
+
+        APP_IMAGE="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}"
+
+        echo "Building Image ${APP_IMAGE}"
+        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]]; then
+          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "${REGISTRY_URL}"
+        fi
+        echo "Pushing Image ${APP_IMAGE}"
+        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+

@@ -9,6 +9,7 @@ spec:
     - name: git-url
     - name: git-revision
       default: master
+    - name: image-url
   tasks:
     - name: test
       taskRef:
@@ -18,4 +19,13 @@ spec:
           value: $(params.git-url)
         - name: git-revision
           value: $(params.git-revision)
-
+    - name: build
+      taskRef:
+        name: igc-build-tag-push
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(tasks.test.results.git-commit)
+        - name: image-url
+          value: $(params.image-url)
