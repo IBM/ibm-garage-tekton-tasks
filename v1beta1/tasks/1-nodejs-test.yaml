@@ -48,7 +48,7 @@ spec:
         git checkout $(params.git-revision)
     - name: build
       image: $(params.js-image)
-      workingdir: /source
+      workingdir: $(params.source-dir)
       script: |
         #!/usr/bin/env bash
         npm install
@@ -60,13 +60,13 @@ spec:
         npm run build --if-present
     - name: test
       image: $(params.js-image)
-      workingdir: /source
+      workingdir: $(params.source-dir)
       script: |
         #!/usr/bin/env bash
         CI=true npm test
     - name: publish-pact
       image: $(params.js-image)
-      workingdir: /source
+      workingdir: $(params.source-dir)
       env:
         - name: PACTBROKER_URL
           valueFrom:
@@ -83,7 +83,7 @@ spec:
         fi
     - name: verify-pact
       image: $(params.js-image)
-      workingdir: /source
+      workingdir: $(params.source-dir)
       env:
         - name: PACTBROKER_URL
           valueFrom:
@@ -100,10 +100,10 @@ spec:
         fi
     - name: sonar-scan
       image: $(params.js-image)
-      workingdir: /source
+      workingdir: $(params.source-dir)
       env:
         - name: SONAR_USER_HOME
-          value: /source
+          value: $(params.source-dir)
         - name: SONARQUBE_URL
           valueFrom:
             configMapKeyRef:
