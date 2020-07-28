@@ -37,13 +37,14 @@ spec:
               key: username
               optional: true
       script: |
+        set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            set +x
             git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
-            set -x
         else
+            set -x
             git clone $(params.git-url) $(params.source-dir)
         fi
+        set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
     - name: build

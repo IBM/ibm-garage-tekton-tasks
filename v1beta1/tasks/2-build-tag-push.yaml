@@ -9,9 +9,16 @@ spec:
     - name: git-url
     - name: git-revision
       default: master
-    - name: image-url
-    - name: js-image
-      default: docker.io/node:12-stretch
+    - name: source-dir
+      default: /source
+    - name: image-server
+      default: ""
+    - name: image-namespace
+      default: ""
+    - name: image-repository
+      default: ""
+    - name: image-tag
+      default: ""
     - name: BUILDER_IMAGE
       default: quay.io/buildah/stable:v1.15.0
     - name: DOCKERFILE
@@ -33,7 +40,7 @@ spec:
   stepTemplate:
     volumeMounts:
       - name: source
-        mountPath: /source
+        mountPath: $(params.source-dir)
   steps:
     - name: git-clone
       image: alpine/git
@@ -44,36 +51,26 @@ spec:
               name: git-credentials
               key: password
               optional: true
-        - name: GIT_USER
+        - name: GIT_USERNAME
           valueFrom:
             secretKeyRef: 
               name: git-credentials
               key: username
               optional: true
       script: |
-        if [[ -n "${GIT_USER}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            set +x
-            git clone "https://${GIT_USER}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" /source
-            set -x
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
         else
-            git clone $(params.git-url) /source
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
         fi
-        cd /source
+        set -x
+        cd $(params.source-dir)
         git checkout $(params.git-revision)
-        echo "IMAGE_VERSION=$(git rev-parse --verify HEAD --short)" > ./env-config
-        echo "IMAGE_NAME=$(basename $(echo -n $(git config --get remote.origin.url) | awk -F '.git' '{print $2}') | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
-        source ./env-config
-        if [[ -z "${IMAGE_VERSION}" ]]; then
-            echo "Error: IMAGE_VERSION not defined"
-            exit 1
-        fi
-        if [[ -z "${IMAGE_NAME}" ]]; then
-            echo "Error: IMAGE_NAME not defined"
-            exit 1
-        fi
     - name: build
       image: $(params.BUILDER_IMAGE)
-      workingdir: /source
+      workingdir: $(params.source-dir)
       env:
         - name: REGISTRY_USER
           valueFrom:
@@ -93,21 +90,10 @@ spec:
       securityContext:
         privileged: true
       script: |
-
-        . ./env-config
-
-        IMAGE_URL=$(params.image-url)
-
-        REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
-        REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
-
-        APP_IMAGE="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}"
-
-        echo "Building Image ${APP_IMAGE}"
+        APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
         buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]]; then
-          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "${REGISTRY_URL}"
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
+          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
         fi
-        echo "Pushing Image ${APP_IMAGE}"
         buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
 

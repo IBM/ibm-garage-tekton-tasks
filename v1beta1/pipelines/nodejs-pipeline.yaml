@@ -39,10 +39,30 @@ spec:
     - name: test
       taskRef:
         name: igc-nodejs-test
+      runAfter:
+        - setup
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
         - name: git-revision
           value: "$(tasks.setup.results.git-revision)"
+    - name: build
+      taskRef:
+        name: igc-build-tag-push
+      runAfter:
+        - test
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: image-server
+          value: "$(tasks.setup.results.image-server)"
+        - name: image-namespace
+          value: "$(tasks.setup.results.image-namespace)"
+        - name: image-repository
+          value: "$(tasks.setup.results.image-repository)"
+        - name: image-tag
+          value: "$(tasks.setup.results.image-tag)"
       
 
