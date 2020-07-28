@@ -31,8 +31,8 @@ spec:
       default: "https"
     - name: health-endpoint
       default: "/health"
-    - tools-image:
-      default: garagecatalyst/ibmcloud-dev:1.1.3
+    - name: tools-image
+      default: "garagecatalyst/ibmcloud-dev:1.1.3"
   results:
     - name: git-url
     - name: git-revision

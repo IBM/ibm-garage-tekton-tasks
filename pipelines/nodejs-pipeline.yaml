@@ -102,7 +102,7 @@ spec:
       taskRef:
         name: igc-health-check
       runAfter:
-       - deploy
+        - deploy
       params:
         - name: app-namespace
           value: "$(tasks.setup.results.app-namespace)"
