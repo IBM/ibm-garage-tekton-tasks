@@ -21,6 +21,8 @@ spec:
       default: ""
     - name: image-tag
       default: ""
+    - name: deploy-namespace
+      default: ""
   results:
     - name: git-url
     - name: git-revision
@@ -28,6 +30,7 @@ spec:
     - name: image-namespace
     - name: image-repository
     - name: image-tag
+    - name: deploy-namespace
   volumes:
     - name: source
       emptyDir: {}
@@ -68,13 +71,14 @@ spec:
         git checkout $(params.git-revision)
 
         # Results
+        # Defaults
         echo -n "$(params.git-url)" | tee $(results.git-url.path)
         echo -n "$(git rev-parse --verify HEAD)" | tee $(results.git-revision.path)
-
         echo -n "$(params.image-server)" | tee $(results.image-server.path)
         echo -n "$(params.image-namespace)" | tee $(results.image-namespace.path)
         echo -n "$(params.image-repository)" | tee $(results.image-repository.path)
         echo -n "$(params.image-tag)" | tee $(results.image-tag.path)
+        echo -n "$(params.deploy-namespace)" | tee $(results.deploy-namespace.path)
 
         if [[ -n "$(params.image-url)" ]]; then
           echo -n "$(params.image-url)" | tee $(results.image-server.path)
@@ -114,4 +118,10 @@ spec:
           # Assume short git commit revision
           echo -n "$(git rev-parse --verify HEAD --short)" | tee $(results.image-tag.path)
         fi
+
+        if [[ -z "$(params.deploy-namespace)" ]]; then
+          # Assume current namespace
+          echo -n "${NAMESPACE}" | tee $(results.deploy-namespace.path)
+        fi
+
 
