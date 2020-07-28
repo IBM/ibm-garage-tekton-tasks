@@ -1,0 +1,164 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: igc-deploy
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: image-server
+      default: ""
+    - name: image-namespace
+      default: ""
+    - name: image-repository
+      default: ""
+    - name: image-tag
+      default: ""
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.0.10
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
+    - name: deploy
+      image: $(inputs.params.tools-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: CLUSTER_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: CLUSTER_TYPE
+              optional: true
+        - name: TLS_SECRET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: TLS_SECRET_NAME
+              optional: true
+        - name: INGRESS_SUBDOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: INGRESS_SUBDOMAIN
+              optional: true
+      script: |
+          #!/usr/bin/env bash
+          set -ex
+          GIT_URL="$(params.git-url)"
+          GIT_REVISION="$(params.git-revision)"
+          ENVIRONMENT_NAME="${NAMESPACE}"
+          IMAGE_SERVER="$(params.image-server)"
+          IMAGE_NAMESPACE="$(params.image-namespace)"
+          IMAGE_NAME="$(params.image-repository)"
+          IMAGE_VERSION="$(params.image-tag)"
+          IMAGE_URL="${IMAGE_SERVER}/${IMAGE_NAMESPACE}/${IMAGE_NAME}"
+
+          export CHART_ROOT=$(find . -name chart)
+          echo "CHART_ROOT: $CHART_ROOT"
+
+          export CHART=$(find . -name Chart*.yaml)
+          echo "CHART: $CHART"
+
+          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          echo "CHART_NAME: $CHART_NAME"
+
+          # Update Chart name and version
+          if [[ "${CHART_NAME}" != "${IMAGE_NAME}" ]]; then
+            echo "Renaming chart from ${CHART_NAME} to ${IMAGE_NAME}"
+            cp -R "${CHART_ROOT}/${CHART_NAME}" "${CHART_ROOT}/${IMAGE_NAME}"
+            cat "${CHART_ROOT}/${CHART_NAME}/Chart.yaml" | \
+                yq w - apiVersion "v1" | \
+                yq w - name "${IMAGE_NAME}" | \
+                yq w - version "1.0.0-rc${IMAGE_VERSION}" > "${CHART_ROOT}/${IMAGE_NAME}/Chart.yaml"
+          else
+            echo "Chart name and image name match: ${IMAGE_NAME}"
+          fi
+
+          CHART_PATH="${CHART_ROOT}/${IMAGE_NAME}"
+
+          RELEASE_NAME="${IMAGE_NAME}"
+          echo "RELEASE_NAME: $RELEASE_NAME"
+
+          echo "INITIALIZING helm with client-only (no Tiller)"
+          helm init --client-only 1> /dev/null 2> /dev/null
+          echo $(helm version --client)
+
+          echo "CHECKING CHART (lint)"
+          helm lint ${CHART_PATH}
+
+          
+
+          INGRESS_ENABLED=true
+          ROUTE_ENABLED=false
+          if [[ "${CLUSTER_TYPE}" == "openshift" ]]; then
+            INGRESS_ENABLED=false
+            ROUTE_ENABLED=true
+          fi
+
+          # Update helm chart with repository and tag values
+          cat ${CHART_PATH}/values.yaml | \
+              yq w - nameOverride "${IMAGE_NAME}" | \
+              yq w - fullnameOverride "${IMAGE_NAME}" | \
+              yq w - vcsInfo.repoUrl "${GIT_URL}" | \
+              yq w - vcsInfo.branch "${GIT_REVISION}" | \
+              yq w - image.repository "${IMAGE_URL}" | \
+              yq w - image.tag "${IMAGE_VERSION}" | \
+              yq w - ingress.enabled "${INGRESS_ENABLED}" | \
+              yq w - route.enabled "${ROUTE_ENABLED}" > ./values.yaml.tmp
+          cp ./values.yaml.tmp ${CHART_PATH}/values.yaml
+          cat ${CHART_PATH}/values.yaml
+
+          # Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
+          helm template ${CHART_PATH} \
+              --name ${RELEASE_NAME} \
+              --namespace ${ENVIRONMENT_NAME} \
+              --set ingress.tlsSecretName="${TLS_SECRET_NAME}" \
+              --set ingress.subdomain="${INGRESS_SUBDOMAIN}" > ./release.yaml
+
+          echo -e "Generated release yaml for: ${ENVIRONMENT_NAME}/${IMAGE_NAME}"
+          cat ./release.yaml
+
+          echo -e "Deploying into: ${ENVIRONMENT_NAME}/${IMAGE_NAME}"
+          kubectl apply -n ${ENVIRONMENT_NAME} -f ./release.yaml --validate=false
+
+          oc rollout status -n ${ENVIRONMENT_NAME} deployment/${IMAGE_NAME}
