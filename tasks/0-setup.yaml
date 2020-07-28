@@ -25,6 +25,14 @@ spec:
       default: ""
     - name: app-name
       default: ""
+    - name: deploy-ingress-type
+      default: "route"
+    - name: health-protocol
+      default: "https"
+    - name: health-endpoint
+      default: "/health"
+    - tools-image:
+      default: garagecatalyst/ibmcloud-dev:1.1.3
   results:
     - name: git-url
     - name: git-revision
@@ -34,6 +42,10 @@ spec:
     - name: image-tag
     - name: app-namespace
     - name: app-name
+    - name: deploy-ingress-type
+    - name: health-protocol
+    - name: health-endpoint
+    - name: tools-image
   volumes:
     - name: source
       emptyDir: {}
@@ -83,6 +95,8 @@ spec:
         echo -n "$(params.image-tag)" | tee $(results.image-tag.path)
         echo -n "$(params.app-namespace)" | tee $(results.app-namespace.path)
         echo -n "$(params.app-name)" | tee $(results.app-name.path)
+        echo -n "$(params.deploy-ingress-type)" | tee $(results.app-name.path)
+        echo -n "$(params.tools-image)" | tee $(results.tools-image.path)
 
         REGISTRY_REPOSITORY="$(params.image-repository)"
         if [[ -n "$(params.image-url)" ]]; then

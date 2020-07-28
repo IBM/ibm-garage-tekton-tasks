@@ -94,4 +94,25 @@ spec:
           value: "$(tasks.setup.results.app-namespace)"
         - name: app-name
           value: "$(tasks.setup.results.app-name)"
-
+        - name: deploy-ingress-type
+          value: "$(tasks.setup.results.deploy-ingress-type)"
+        - name: tools-image
+          value: "$(tasks.setup.results.tools-image)"
+    - name: health
+      taskRef:
+        name: igc-health-check
+      runAfter:
+       - deploy
+      params:
+        - name: app-namespace
+          value: "$(tasks.setup.results.app-namespace)"
+        - name: app-name
+          value: "$(tasks.setup.results.app-name)"
+        - name: deploy-ingress-type
+          value: "$(tasks.setup.results.deploy-ingress-type)"
+        - name: health-protocol
+          value: "$(tasks.setup.results.health-protocol)"
+        - name: health-endpoint
+          value: "$(tasks.setup.results.health-endpoint)"
+        - name: tools-image
+          value: "$(tasks.setup.results.tools-image)"

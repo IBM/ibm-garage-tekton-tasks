@@ -26,7 +26,7 @@ spec:
     - name: deploy-ingress-type
       default: "route"
     - name: tools-image
-      default: garagecatalyst/ibmcloud-dev:1.0.10
+      default: garagecatalyst/ibmcloud-dev:1.1.3
   volumes:
     - name: source
       emptyDir: {}
