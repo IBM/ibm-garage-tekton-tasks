@@ -18,7 +18,7 @@ spec:
     - name: image-tag
       default: ""
   tasks:
-    - name: foo
+    - name: setup
       taskRef:
         name: igc-setup
       params:
