@@ -54,6 +54,8 @@ spec:
           value: "$(tasks.setup.results.git-url)"
         - name: git-revision
           value: "$(tasks.setup.results.git-revision)"
+        - name: js-image
+          value: "$(tasks.setup.results.js-image)"
     - name: build
       taskRef:
         name: igc-build-tag-push
@@ -116,3 +118,15 @@ spec:
           value: "$(tasks.setup.results.health-endpoint)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
+    - name: tag-release
+      taskRef:
+        name: ibm-tag-release
+      runAfter:
+        - health
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: js-image
+          value: "$(tasks.setup.results.js-image)"

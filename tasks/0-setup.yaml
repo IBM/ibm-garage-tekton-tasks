@@ -32,7 +32,9 @@ spec:
     - name: health-endpoint
       default: "/health"
     - name: tools-image
-      default: "garagecatalyst/ibmcloud-dev:1.1.3"
+      default: garagecatalyst/ibmcloud-dev:1.1.3
+    - name: js-image
+      default: docker.io/node:lts-stretch
   results:
     - name: git-url
     - name: git-revision
@@ -46,6 +48,7 @@ spec:
     - name: health-protocol
     - name: health-endpoint
     - name: tools-image
+    - name: js-image
   volumes:
     - name: source
       emptyDir: {}
@@ -84,6 +87,7 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
+        git reset --hard $(params.git-revision)
 
         # Results
         # Defaults
@@ -99,6 +103,7 @@ spec:
         echo -n "$(params.health-protocol)" | tee $(results.health-protocol.path)
         echo -n "$(params.health-endpoint)" | tee $(results.health-endpoint.path)
         echo -n "$(params.tools-image)" | tee $(results.tools-image.path)
+        echo -n "$(params.js-image)" | tee $(results.js-image.path)
 
         REGISTRY_REPOSITORY="$(params.image-repository)"
         if [[ -n "$(params.image-url)" ]]; then

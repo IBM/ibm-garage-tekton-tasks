@@ -12,7 +12,7 @@ spec:
     - name: source-dir
       default: /source
     - name: js-image
-      default: docker.io/node:12-stretch
+      default: docker.io/node:lts-stretch
   volumes:
     - name: source
       emptyDir: {}
@@ -47,23 +47,22 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
+        git reset --hard $(params.git-revision)
     - name: build
       image: $(params.js-image)
       workingdir: $(params.source-dir)
       script: |
-        #!/usr/bin/env bash
         npm install
         if [ -d client ]; then
-          pushd client
+          cd client
           npm install
-          popd
+          cd -
         fi
         npm run build --if-present
     - name: test
       image: $(params.js-image)
       workingdir: $(params.source-dir)
       script: |
-        #!/usr/bin/env bash
         CI=true npm test
     - name: publish-pact
       image: $(params.js-image)
@@ -76,7 +75,6 @@ spec:
               key: PACTBROKER_URL
               optional: true
       script: |
-        #!/usr/bin/env bash
         if [ -n "${PACTBROKER_URL}" ]; then
             npm run pact:publish --if-present
         else 
@@ -93,7 +91,6 @@ spec:
               key: PACTBROKER_URL
               optional: true
       script: |
-        #!/usr/bin/env bash
         if [ -n "${PACTBROKER_URL}" ]; then
             npm run pact:verify --if-present
         else 
@@ -124,7 +121,6 @@ spec:
               key: SONARQUBE_PASSWORD
               optional: true
       script: |
-        #!/usr/bin/env bash
         if [ -n "${SONARQUBE_URL}" ]; then
             npm run sonarqube:scan --if-present
         else 
