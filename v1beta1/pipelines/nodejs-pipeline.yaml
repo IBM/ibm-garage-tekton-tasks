@@ -36,4 +36,13 @@ spec:
           value: $(params.image-repository)
         - name: image-tag
           value: $(params.image-tag)
+    - name: test
+      taskRef:
+        name: igc-nodejs-test
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+      
 
