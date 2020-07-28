@@ -1,76 +1,97 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: igc-nodejs
-  labels:
-    version: 0.0.0
 spec:
-  resources:
-    - name: git-source
-      type: git
-    - name: docker-image
-      type: image
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: image-url
+      default: ""
+    - name: image-server
+      default: ""
+    - name: image-namespace
+      default: ""
+    - name: image-repository
+      default: ""
+    - name: image-tag
+      default: ""
+    - name: app-namespace
+      default: ""
+    - name: app-name
+      default: ""
   tasks:
+    - name: setup
+      taskRef:
+        name: igc-setup
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
+        - name: image-url
+          value: $(params.image-url)
+        - name: image-server
+          value: $(params.image-server)
+        - name: image-namespace
+          value: $(params.image-namespace)
+        - name: image-repository
+          value: $(params.image-repository)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: app-namespace
+          value: $(params.app-namespace)
+        - name: app-name
+          value: $(params.app-name)
     - name: test
       taskRef:
         name: igc-nodejs-test
-      resources:
-        inputs:
-          - name: source
-            resource: git-source
+      runAfter:
+        - setup
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
     - name: build
       taskRef:
         name: igc-build-tag-push
       runAfter:
-       - test
-      resources:
-        inputs:
-          - name: source
-            resource: git-source
-        outputs:
-          - name: image
-            resource: docker-image
+        - test
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: image-server
+          value: "$(tasks.setup.results.image-server)"
+        - name: image-namespace
+          value: "$(tasks.setup.results.image-namespace)"
+        - name: image-repository
+          value: "$(tasks.setup.results.image-repository)"
+        - name: image-tag
+          value: "$(tasks.setup.results.image-tag)"
     - name: deploy
       taskRef:
         name: igc-deploy
       runAfter:
-       - build
-      resources:
-        inputs:
-          - name: source
-            resource: git-source
-          - name: image
-            resource: docker-image
-    - name: health
-      taskRef:
-        name: igc-health-check
-      runAfter:
-       - deploy
-      resources:
-        inputs:
-          - name: source
-            resource: git-source
-          - name: image
-            resource: docker-image
-    - name: release
-      taskRef:
-        name: igc-helm-package
-      runAfter:
-       - health
-      resources:
-        inputs:
-          - name: source
-            resource: git-source
-          - name: image
-            resource: docker-image
-    - name: gitops
-      taskRef:
-        name: igc-gitops
-      runAfter:
-       - release
-      resources:
-        inputs:
-          - name: source
-            resource: git-source
-          - name: image
-            resource: docker-image
+        - build
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: image-server
+          value: "$(tasks.setup.results.image-server)"
+        - name: image-namespace
+          value: "$(tasks.setup.results.image-namespace)"
+        - name: image-repository
+          value: "$(tasks.setup.results.image-repository)"
+        - name: image-tag
+          value: "$(tasks.setup.results.image-tag)"
+        - name: app-namespace
+          value: "$(tasks.setup.results.app-namespace)"
+        - name: app-name
+          value: "$(tasks.setup.results.app-name)"
+

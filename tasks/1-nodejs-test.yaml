@@ -1,94 +1,133 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: igc-nodejs-test
   labels:
     version: 0.0.0
 spec:
-  inputs:
-    resources:
-      - name: source
-        type: git
-    params:
-      - name: js-image
-        type: string
-        default: node:12-stretch
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: js-image
+      default: docker.io/node:12-stretch
+  volumes:
+    - name: source
+      emptyDir: {}
   stepTemplate:
-    envFrom:
-      - configMapRef:
-          name: pactbroker-config
-          optional: true
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
   steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
     - name: build
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
+      image: $(params.js-image)
+      workingdir: $(params.source-dir)
+      script: |
+        #!/usr/bin/env bash
+        npm install
+        if [ -d client ]; then
+          pushd client
           npm install
-          if [ -d client ]; then
-            pushd client
-            npm install
-            popd
-          fi
-          npm run build --if-present
+          popd
+        fi
+        npm run build --if-present
     - name: test
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-          CI=true npm test
+      image: $(params.js-image)
+      workingdir: $(params.source-dir)
+      script: |
+        #!/usr/bin/env bash
+        CI=true npm test
     - name: publish-pact
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-          if [ -n "${PACTBROKER_URL}" ]; then
-              npm run pact:publish --if-present
-          else 
-              echo "Skipping Pact publish"
-          fi
+      image: $(params.js-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: PACTBROKER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: pactbroker-config
+              key: PACTBROKER_URL
+              optional: true
+      script: |
+        #!/usr/bin/env bash
+        if [ -n "${PACTBROKER_URL}" ]; then
+            npm run pact:publish --if-present
+        else 
+            echo "Skipping Pact publish"
+        fi
     - name: verify-pact
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-          if [ -n "${PACTBROKER_URL}" ]; then
-              npm run pact:verify --if-present
-          else 
-              echo "Skipping Pact publish"
-          fi
+      image: $(params.js-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: PACTBROKER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: pactbroker-config
+              key: PACTBROKER_URL
+              optional: true
+      script: |
+        #!/usr/bin/env bash
+        if [ -n "${PACTBROKER_URL}" ]; then
+            npm run pact:verify --if-present
+        else 
+            echo "Skipping Pact publish"
+        fi
     - name: sonar-scan
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
-      envFrom:
-        - configMapRef:
-            name: sonarqube-config
-            optional: true
-        - secretRef:
-            name: sonarqube-access
-            optional: true
+      image: $(params.js-image)
+      workingdir: $(params.source-dir)
       env:
         - name: SONAR_USER_HOME
-          value: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-          if [ -n "${SONARQUBE_URL}" ]; then
-              npm run sonarqube:scan --if-present
-          else 
-              echo "Skipping Sonar Qube step"
-          fi
+          value: $(params.source-dir)
+        - name: SONARQUBE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: sonarqube-config
+              key: SONARQUBE_URL
+              optional: true
+        - name: SONARQUBE_USER
+          valueFrom:
+            secretKeyRef:
+              name: sonarqube-access
+              key: SONARQUBE_USER
+              optional: true
+        - name: SONARQUBE_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: sonarqube-access
+              key: SONARQUBE_PASSWORD
+              optional: true
+      script: |
+        #!/usr/bin/env bash
+        if [ -n "${SONARQUBE_URL}" ]; then
+            npm run sonarqube:scan --if-present
+        else 
+            echo "Skipping Sonar Qube step"
+        fi
+

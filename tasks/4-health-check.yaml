@@ -1,57 +1,54 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: igc-health-check
   labels:
     version: 0.0.0
 spec:
-  inputs:
-    resources:
-      - name: source
-        type: git
-      - name: image
-        type: image
-    params:
-      - name: js-image
-        type: string
-        default: docker.io/node:12-stretch
-      - name: tools-image
-        type: string
-        default: garagecatalyst/ibmcloud-dev:1.0.10
+  params:
+    - name: app-namespace
+      default: ""
+    - name: app-name
+      default: ""
+    - name: deploy-ingress-type
+      default: "route"
+    - name: health-protocol
+      default: ""
+    - name: health-endpoint
+      default: "/health"
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.0.10
   steps:
     - name: health-check
       image: $(inputs.params.tools-image)
-      workingdir: $(inputs.resources.source.path)
-      env:
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-      envFrom:
-        - configMapRef:
-            name: ibmcloud-config
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          ENVIRONMENT_NAME="${NAMESPACE}"
+      script: |
+          #!/usr/bin/env bash
+          set -x
+          
+          APP_NAMESPACE="$(params.app-namespace)"
+          APP_NAME="$(params.app-name)"
+          PROTOCOL="$(params.health-protocol)"
+          INGRESS_TYPE="$(params.deploy-ingress-type)"
+          HEALTH_ENDPOINT="$(params.health-endpoint)"
 
-          IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')
-
-          if [[ "${CLUSTER_TYPE}" == "openshift" ]]; then
-              ROUTE_HOST=$(kubectl get route/${IMAGE_NAME} --namespace ${ENVIRONMENT_NAME} --output=jsonpath='{ .spec.host }')
-              URL="https://${ROUTE_HOST}"
+          if [[ "${INGRESS_TYPE}" == "route" ]]; then
+              HOST=$(kubectl get route/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.host }')
+              if [[ -z "${PROTOCOL}" ]]; then
+                PROTOCOL="https"
+              fi
           else
-              INGRESS_HOST=$(kubectl get ingress/${IMAGE_NAME} --namespace ${ENVIRONMENT_NAME} --output=jsonpath='{ .spec.rules[0].host }')
-              URL="http://${INGRESS_HOST}"
+              HOST=$(kubectl get ingress/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.rules[0].host }')
+              if [[ -z "${PROTOCOL}" ]]; then
+                PROTOCOL="http"
+              fi
           fi
 
+          URL="${PROTOCOL}://${HOST}${HEALTH_ENDPOINT}"
           sleep_countdown=5
-
           # sleep for 10 seconds to allow enough time for the server to start
           sleep 10
           echo "Health check start"
-          while [[ $(curl -sL -w "%{http_code}\\n" "${URL}/health" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) != "200" ]]; do
+          while [[ $(curl -sL -w "%{http_code}\\n" "${URL}" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) != "200" ]]; do
               sleep 30
               echo "Health check failure. Remaining retries: $sleep_countdown"
               sleep_countdown=$((sleep_countdown-1))
@@ -60,6 +57,5 @@ spec:
                       exit 1;
               fi
           done
-
           echo "Successfully reached health endpoint: ${URL}/health"
           echo "====================================================================="
