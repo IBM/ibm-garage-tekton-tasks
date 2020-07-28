@@ -22,14 +22,12 @@ spec:
     - name: image-tag
       default: ""
   results:
+    - name: git-url
     - name: git-revision
     - name: image-server
     - name: image-namespace
     - name: image-repository
     - name: image-tag
-    - name: git-url
-    - name: git-username
-    - name: git-password
   volumes:
     - name: source
       emptyDir: {}

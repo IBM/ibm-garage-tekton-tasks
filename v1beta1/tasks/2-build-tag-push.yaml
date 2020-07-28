@@ -74,9 +74,6 @@ spec:
     - name: build
       image: $(params.BUILDER_IMAGE)
       workingdir: /source
-      resources:
-        requests:
-          ephemeral-storage: "2Gi"
       env:
         - name: REGISTRY_USER
           valueFrom:
@@ -112,5 +109,5 @@ spec:
           buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "${REGISTRY_URL}"
         fi
         echo "Pushing Image ${APP_IMAGE}"
-        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+        buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
 

@@ -2,8 +2,6 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: igc-nodejs
-  labels:
-    version: 0.0.0
 spec:
   params:
     - name: git-url
@@ -20,7 +18,7 @@ spec:
     - name: image-tag
       default: ""
   tasks:
-    - name: setup
+    - name: foo
       taskRef:
         name: igc-setup
       params:
@@ -30,29 +28,12 @@ spec:
           value: $(params.git-revision)
         - name: image-url
           value: $(params.image-url)
-        - name: git-revision
+        - name: image-server
           value: $(params.image-server)
         - name: image-namespace
           value: $(params.image-namespace)
         - name: image-repository
+          value: $(params.image-repository)
+        - name: image-tag
           value: $(params.image-tag)
-        - name: image-repository
-          value: $(params.image-tag)
-    - name: test
-      taskRef:
-        name: igc-nodejs-test
-      params:
-        - name: git-url
-          value: $(tasks.setup.results.git-url)
-        - name: git-revision
-          value: $(tasks.setup.results.git-revision)
-#    - name: build
-#      taskRef:
-#        name: igc-build-tag-push
-#      params:
-#        - name: git-url
-#          value: $(params.git-url)
-#        - name: git-revision
-#          value: $(tasks.test.results.git-commit)
-#        - name: image-url
-#          value: $(params.image-url)
+
