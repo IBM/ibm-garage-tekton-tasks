@@ -1,0 +1,118 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: igc-setup
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: image-url
+      default: ""
+    - name: image-server
+      default: ""
+    - name: image-namespace
+      default: ""
+    - name: image-repository
+      default: ""
+    - name: image-tag
+      default: ""
+  results:
+    - name: git-revision
+    - name: image-server
+    - name: image-namespace
+    - name: image-repository
+    - name: image-tag
+    - name: git-url
+    - name: git-username
+    - name: git-password
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            set +x
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            set -x
+        else
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
+
+        # Results
+        echo -n "$(params.git-url)" | tee $(results.git-url.path)
+        echo -n "$(git rev-parse --verify HEAD)" | tee $(results.git-revision.path)
+
+        echo -n "$(params.image-server)" | tee $(results.image-server.path)
+        echo -n "$(params.image-namespace)" | tee $(results.image-namespace.path)
+        echo -n "$(params.image-repository)" | tee $(results.image-repository.path)
+        echo -n "$(params.image-tag)" | tee $(results.image-tag.path)
+
+        if [[ -n "$(params.image-url)" ]]; then
+          echo -n "$(params.image-url)" | tee $(results.image-server.path)
+
+          REGISTRY_SERVER=$(echo "$(params.image-url)" | awk -F / '{print $1}')
+          if [[ -n "${REGISTRY_SERVER}" ]]; then
+            echo -n "${REGISTRY_SERVER}" | tee $(results.image-server.path)
+          fi
+
+          REGISTRY_NAMESPACE=$(echo "$(params.image-url)" | awk -F / '{print $2}')
+          if [[ -n "${REGISTRY_NAMESPACE}" ]]; then
+            if [[ "${REGISTRY_NAMESPACE}" = '$NAMESPACE' ]]; then
+              REGISTRY_NAMESPACE=${NAMESPACE}
+            fi
+            echo -n "${REGISTRY_NAMESPACE}" | tee $(results.image-namespace.path)
+          fi
+
+          REGISTRY_REPOSITORY=$(echo "$(params.image-url)" | awk -F / '{print $3}')
+          if [[ -n "${REGISTRY_REPOSITORY}" ]]; then
+            echo -n "${REGISTRY_REPOSITORY}" | tee $(results.image-repository.path)
+          fi
+
+          REGISTRY_TAG=$(echo "$(params.image-url)" | awk -F / '{print $2}' | awk -F : '{print $2}')
+          if [[ -n "${REGISTRY_TAG}" ]]; then
+            echo -n "${REGISTRY_TAG}" | tee $(results.image-tag.path)
+          fi
+        fi
+        if [[ -z "$(params.image-namespace)" ]] && [[ -z "${REGISTRY_NAMESPACE}" ]]; then
+          # Assume current k8s namespace
+          echo -n "${NAMESPACE}" | tee $(results.image-namespace.path)
+        fi
+        if [[ -z "$(params.image-repository)" ]] && [[ -z "${REGISTRY_REPOSITORY}" ]]; then
+          # Assume repo dir is image repository/image-name
+          echo -n "$(basename $(echo -n $(git config --get remote.origin.url) | awk -F '.git' '{print $2}') | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" | tee $(results.image-repository.path)
+        fi
+        if [[ -z "$(params.image-tag)" ]] && [[ -z "${REGISTRY_TAG}" ]]; then
+          # Assume short git commit revision
+          echo -n "$(git rev-parse --verify HEAD --short)" | tee $(results.image-tag.path)
+        fi
+

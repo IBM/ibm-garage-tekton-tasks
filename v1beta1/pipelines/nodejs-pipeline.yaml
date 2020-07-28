@@ -10,22 +10,49 @@ spec:
     - name: git-revision
       default: master
     - name: image-url
+      default: ""
+    - name: image-server
+      default: ""
+    - name: image-namespace
+      default: ""
+    - name: image-repository
+      default: ""
+    - name: image-tag
+      default: ""
   tasks:
-    - name: test
+    - name: setup
       taskRef:
-        name: igc-nodejs-test
+        name: igc-setup
       params:
         - name: git-url
           value: $(params.git-url)
         - name: git-revision
           value: $(params.git-revision)
-    - name: build
-      taskRef:
-        name: igc-build-tag-push
-      params:
-        - name: git-url
-          value: $(params.git-url)
-        - name: git-revision
-          value: $(tasks.test.results.git-commit)
         - name: image-url
           value: $(params.image-url)
+        - name: git-revision
+          value: $(params.image-server)
+        - name: image-namespace
+          value: $(params.image-namespace)
+        - name: image-repository
+          value: $(params.image-tag)
+        - name: image-repository
+          value: $(params.image-tag)
+    - name: test
+      taskRef:
+        name: igc-nodejs-test
+      params:
+        - name: git-url
+          value: $(tasks.setup.results.git-url)
+        - name: git-revision
+          value: $(tasks.setup.results.git-revision)
+#    - name: build
+#      taskRef:
+#        name: igc-build-tag-push
+#      params:
+#        - name: git-url
+#          value: $(params.git-url)
+#        - name: git-revision
+#          value: $(tasks.test.results.git-commit)
+#        - name: image-url
+#          value: $(params.image-url)

@@ -9,17 +9,17 @@ spec:
     - name: git-url
     - name: git-revision
       default: master
+    - name: source-dir
+      default: /source
     - name: js-image
       default: docker.io/node:12-stretch
-  results:
-    - name: git-commit
   volumes:
     - name: source
       emptyDir: {}
   stepTemplate:
     volumeMounts:
       - name: source
-        mountPath: /source
+        mountPath: $(params.source-dir)
   steps:
     - name: git-clone
       image: alpine/git
@@ -30,23 +30,22 @@ spec:
               name: git-credentials
               key: password
               optional: true
-        - name: GIT_USER
+        - name: GIT_USERNAME
           valueFrom:
             secretKeyRef: 
               name: git-credentials
               key: username
               optional: true
       script: |
-        if [[ -n "${GIT_USER}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
             set +x
-            git clone "https://${GIT_USER}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" /source
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
             set -x
         else
-            git clone $(params.git-url) /source
+            git clone $(params.git-url) $(params.source-dir)
         fi
-        cd /source
+        cd $(params.source-dir)
         git checkout $(params.git-revision)
-        echo -n "$(git rev-parse --verify HEAD)" | tee $(results.git-commit.path)
     - name: build
       image: $(params.js-image)
       workingdir: /source
