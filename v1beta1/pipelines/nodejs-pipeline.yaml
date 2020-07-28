@@ -17,7 +17,9 @@ spec:
       default: ""
     - name: image-tag
       default: ""
-    - name: deploy-namespace
+    - name: app-namespace
+      default: ""
+    - name: app-name
       default: ""
   tasks:
     - name: setup
@@ -38,8 +40,10 @@ spec:
           value: $(params.image-repository)
         - name: image-tag
           value: $(params.image-tag)
-        - name: deploy-namespace
-          value: $(params.deploy-namespace)
+        - name: app-namespace
+          value: $(params.app-namespace)
+        - name: app-name
+          value: $(params.app-name)
     - name: test
       taskRef:
         name: igc-nodejs-test
@@ -86,6 +90,8 @@ spec:
           value: "$(tasks.setup.results.image-repository)"
         - name: image-tag
           value: "$(tasks.setup.results.image-tag)"
-        - name: deploy-namespace
-          value: "$(tasks.setup.results.deploy-namespace)"
+        - name: app-namespace
+          value: "$(tasks.setup.results.app-namespace)"
+        - name: app-name
+          value: "$(tasks.setup.results.app-name)"
 

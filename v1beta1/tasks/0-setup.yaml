@@ -21,7 +21,9 @@ spec:
       default: ""
     - name: image-tag
       default: ""
-    - name: deploy-namespace
+    - name: app-namespace
+      default: ""
+    - name: app-name
       default: ""
   results:
     - name: git-url
@@ -30,7 +32,8 @@ spec:
     - name: image-namespace
     - name: image-repository
     - name: image-tag
-    - name: deploy-namespace
+    - name: app-namespace
+    - name: app-name
   volumes:
     - name: source
       emptyDir: {}
@@ -78,8 +81,10 @@ spec:
         echo -n "$(params.image-namespace)" | tee $(results.image-namespace.path)
         echo -n "$(params.image-repository)" | tee $(results.image-repository.path)
         echo -n "$(params.image-tag)" | tee $(results.image-tag.path)
-        echo -n "$(params.deploy-namespace)" | tee $(results.deploy-namespace.path)
+        echo -n "$(params.app-namespace)" | tee $(results.app-namespace.path)
+        echo -n "$(params.app-name)" | tee $(results.app-name.path)
 
+        REGISTRY_REPOSITORY="$(params.image-repository)"
         if [[ -n "$(params.image-url)" ]]; then
           echo -n "$(params.image-url)" | tee $(results.image-server.path)
 
@@ -106,22 +111,30 @@ spec:
             echo -n "${REGISTRY_TAG}" | tee $(results.image-tag.path)
           fi
         fi
+
+
         if [[ -z "$(params.image-namespace)" ]] && [[ -z "${REGISTRY_NAMESPACE}" ]]; then
           # Assume current k8s namespace
           echo -n "${NAMESPACE}" | tee $(results.image-namespace.path)
         fi
         if [[ -z "$(params.image-repository)" ]] && [[ -z "${REGISTRY_REPOSITORY}" ]]; then
           # Assume repo dir is image repository/image-name
-          echo -n "$(basename $(echo -n $(git config --get remote.origin.url) | awk -F '.git' '{print $2}') | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" | tee $(results.image-repository.path)
+          REGISTRY_REPOSITORY="$(basename $(echo -n $(git config --get remote.origin.url) | awk -F '.git' '{print $2}') | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')"
+          echo -n "${REGISTRY_REPOSITORY}" | tee $(results.image-repository.path)
         fi
         if [[ -z "$(params.image-tag)" ]] && [[ -z "${REGISTRY_TAG}" ]]; then
           # Assume short git commit revision
           echo -n "$(git rev-parse --verify HEAD --short)" | tee $(results.image-tag.path)
         fi
 
-        if [[ -z "$(params.deploy-namespace)" ]]; then
+        if [[ -z "$(params.app-namespace)" ]]; then
           # Assume current namespace
-          echo -n "${NAMESPACE}" | tee $(results.deploy-namespace.path)
+          echo -n "${NAMESPACE}" | tee $(results.app-namespace.path)
+        fi
+
+        if [[ -z "$(params.app-name)" ]]; then
+          # Assume image repository/name
+          echo -n "${REGISTRY_REPOSITORY}" | tee $(results.app-name.path)
         fi
 
 
