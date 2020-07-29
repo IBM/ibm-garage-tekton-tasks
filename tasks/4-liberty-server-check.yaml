@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: igc-liberty-server-check
+  name: ibm-liberty-server-check
 spec:
   inputs:
     resources:

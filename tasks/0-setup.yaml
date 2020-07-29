@@ -1,7 +1,12 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: igc-setup
+  name: ibm-setup
+  annotations:
+    description: Sets up the pipeline environment and generates/normalizes a number of param values
+    app.openshift.io/description: Sets up the pipeline environment and generates/normalizes a number of param values
+    app.openshift.io/vcs-ref: master
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
   labels:
     version: 0.0.0
 spec:

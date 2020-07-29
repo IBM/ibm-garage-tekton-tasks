@@ -1,7 +1,12 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: igc-health-check
+  name: ibm-health-check
+  annotations:
+    description: Performs a health check on the deployed application
+    app.openshift.io/description: Performs a health check on the deployed application
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
   labels:
     version: 0.0.0
 spec:

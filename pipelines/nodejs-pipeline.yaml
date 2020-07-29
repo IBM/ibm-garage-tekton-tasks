@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: igc-nodejs
+  name: ibm-nodejs
 spec:
   params:
     - name: git-url
@@ -24,7 +24,7 @@ spec:
   tasks:
     - name: setup
       taskRef:
-        name: igc-setup
+        name: ibm-setup
       params:
         - name: git-url
           value: $(params.git-url)
@@ -46,7 +46,7 @@ spec:
           value: $(params.app-name)
     - name: test
       taskRef:
-        name: igc-nodejs-test
+        name: ibm-nodejs-test
       runAfter:
         - setup
       params:
@@ -58,7 +58,7 @@ spec:
           value: "$(tasks.setup.results.js-image)"
     - name: build
       taskRef:
-        name: igc-build-tag-push
+        name: ibm-build-tag-push
       runAfter:
         - test
       params:
@@ -76,7 +76,7 @@ spec:
           value: "$(tasks.setup.results.image-tag)"
     - name: deploy
       taskRef:
-        name: igc-deploy
+        name: ibm-deploy
       runAfter:
         - build
       params:
@@ -102,7 +102,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: health
       taskRef:
-        name: igc-health-check
+        name: ibm-health-check
       runAfter:
         - deploy
       params:

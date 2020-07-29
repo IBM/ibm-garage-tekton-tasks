@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: igc-nodejs-sec
+  name: ibm-nodejs-sec
   labels:
     version: 0.0.0
 spec:
@@ -13,14 +13,14 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: igc-nodejs-test
+        name: ibm-nodejs-test
       resources:
         inputs:
           - name: source
             resource: git-source
     - name: build
       taskRef:
-        name: igc-build-tag-push
+        name: ibm-build-tag-push
       runAfter:
        - test
       resources:
@@ -32,7 +32,7 @@ spec:
             resource: docker-image
     - name: scan
       taskRef:
-        name: igc-img-scan-ibm
+        name: ibm-img-scan-ibm
       runAfter:
        - build
       resources:
@@ -44,7 +44,7 @@ spec:
             resource: docker-image
     - name: deploy
       taskRef:
-        name: igc-deploy
+        name: ibm-deploy
       runAfter:
        - scan
       resources:
@@ -55,7 +55,7 @@ spec:
             resource: docker-image
     - name: health
       taskRef:
-        name: igc-health-check
+        name: ibm-health-check
       runAfter:
        - deploy
       resources:
@@ -66,7 +66,7 @@ spec:
             resource: docker-image
     - name: release
       taskRef:
-        name: igc-helm-package
+        name: ibm-helm-package
       runAfter:
        - health
       resources:
@@ -77,7 +77,7 @@ spec:
             resource: docker-image
     - name: gitops
       taskRef:
-        name: igc-gitops
+        name: ibm-gitops
       runAfter:
        - release
       resources:

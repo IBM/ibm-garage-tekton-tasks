@@ -1,7 +1,12 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: igc-gradle-pact-verify
+  name: ibm-gradle-pact-verify
+  annotations:
+    description: Performs pact verification on the service provider
+    app.openshift.io/description: Performs pact verification on the service provider
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
   labels:
     version: 0.0.0
 spec:

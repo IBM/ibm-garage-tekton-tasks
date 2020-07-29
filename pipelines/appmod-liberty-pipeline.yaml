@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: igc-appmod-liberty
+  name: ibm-appmod-liberty
   labels:
     version: 0.0.0
 spec:
@@ -13,14 +13,14 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: igc-java-maven-test
+        name: ibm-java-maven-test
       resources:
         inputs:
           - name: source
             resource: git-source
     - name: build
       taskRef:
-        name: igc-build-tag-push
+        name: ibm-build-tag-push
       runAfter:
        - test
       resources:
@@ -32,7 +32,7 @@ spec:
             resource: docker-image
     - name: deploy
       taskRef:
-        name: igc-deploy
+        name: ibm-deploy
       runAfter:
        - build
       resources:
@@ -43,7 +43,7 @@ spec:
             resource: docker-image
     - name: health
       taskRef:
-        name: igc-liberty-server-check
+        name: ibm-liberty-server-check
       runAfter:
        - deploy
       resources:
@@ -54,7 +54,7 @@ spec:
             resource: docker-image
     - name: package
       taskRef:
-        name: igc-helm-package
+        name: ibm-helm-package
       runAfter:
        - health
       resources:
@@ -65,7 +65,7 @@ spec:
             resource: docker-image
     - name: gitops
       taskRef:
-        name: igc-gitops
+        name: ibm-gitops
       runAfter:
        - package
       resources:

@@ -1,7 +1,12 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: igc-deploy
+  name: ibm-deploy
+  annotations:
+    description: Deploys the application to the CI environment for verification using the provided helm chart
+    app.openshift.io/description: Deploys the application to the CI environment for verification using the provided helm chart
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
   labels:
     version: 0.0.0
 spec:

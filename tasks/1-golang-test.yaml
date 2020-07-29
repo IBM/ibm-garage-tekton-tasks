@@ -1,9 +1,12 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: igc-golang-test
+  name: ibm-golang-test
   annotations:
     description: Executes build, test, and sonarscan logic for a Golang application
+    app.openshift.io/description: Executes build, test, and sonarscan logic for a Golang application
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
   labels:
     version: 0.0.0
 spec:

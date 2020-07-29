@@ -1,7 +1,12 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: igc-nodejs-test
+  name: ibm-nodejs-test
+  annotations:
+    description: Executes build, test, and sonarscan logic for a NodeJS application
+    app.openshift.io/description: Executes build, test, and sonarscan logic for a NodeJS application
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
   labels:
     version: 0.0.0
 spec:

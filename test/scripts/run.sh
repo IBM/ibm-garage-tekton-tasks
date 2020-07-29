@@ -2,19 +2,19 @@
 
 
 if [ "$1" == "nodejs-typescript" ]; then
-  PIPELINE="igc-nodejs"
+  PIPELINE="ibm-nodejs"
   GIT="nodejs-typescript-git"
   IMAGE="nodejs-typescript-image"
 elif [ "$1" == "nodejs-react" ]; then
-  PIPELINE="igc-nodejs"
+  PIPELINE="ibm-nodejs"
   GIT="nodejs-react-git"
   IMAGE="nodejs-react-image"
 elif [ "$1" == "nodejs-angular" ]; then
-  PIPELINE="igc-nodejs"
+  PIPELINE="ibm-nodejs"
   GIT="nodejs-angular-git"
   IMAGE="nodejs-angular-image"
 elif [ "$1" == "java-spring" ]; then
-  PIPELINE="igc-java-gradle"
+  PIPELINE="ibm-java-gradle"
   GIT="java-spring-git"
   IMAGE="java-spring-image"
 else 

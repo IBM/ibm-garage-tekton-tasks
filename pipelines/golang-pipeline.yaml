@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
-  name: igc-golang
+  name: ibm-golang
   annotations:
     description: Pipeline to build a golang application and push the changes to a GitOps repository
   labels:
@@ -15,14 +15,14 @@ spec:
   tasks:
     - name: test
       taskRef:
-        name: igc-golang-test
+        name: ibm-golang-test
       resources:
         inputs:
           - name: source
             resource: git-source
     - name: build
       taskRef:
-        name: igc-build-tag-push
+        name: ibm-build-tag-push
       runAfter:
        - test
       resources:
@@ -34,7 +34,7 @@ spec:
             resource: docker-image
     - name: deploy
       taskRef:
-        name: igc-deploy
+        name: ibm-deploy
       runAfter:
        - build
       resources:
@@ -45,7 +45,7 @@ spec:
             resource: docker-image
     - name: health
       taskRef:
-        name: igc-health-check
+        name: ibm-health-check
       runAfter:
        - deploy
       resources:
@@ -56,7 +56,7 @@ spec:
             resource: docker-image
     - name: release
       taskRef:
-        name: igc-helm-package
+        name: ibm-helm-package
       runAfter:
        - health
       resources:
@@ -67,7 +67,7 @@ spec:
             resource: docker-image
     - name: gitops
       taskRef:
-        name: igc-gitops
+        name: ibm-gitops
       runAfter:
        - release
       resources:
