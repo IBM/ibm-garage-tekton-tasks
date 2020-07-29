@@ -17,6 +17,9 @@ spec:
       default: ""
     - name: SKOPEO_IMAGE
       default: quay.io/containers/skopeo:v1.1.0
+  results:
+    - name: image-url
+      description: The url of the image to be pushed
   volumes:
     - name: varlibcontainers
       emptyDir: {}
@@ -62,3 +65,4 @@ spec:
         fi
         
         skopeo copy ${IMAGE_FROM_CREDS} ${IMAGE_FROM_TLS} ${IMAGE_TO_CREDS} ${IMAGE_TO_TLS} docker://${IMAGE_FROM} docker://${IMAGE_TO}
+        echo -n "${IMAGE_TO}" | tee $(results.image-url.path)

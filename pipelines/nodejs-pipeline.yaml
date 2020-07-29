@@ -5,23 +5,33 @@ metadata:
 spec:
   params:
     - name: git-url
+      description: The url for the git repository
     - name: git-revision
+      description: The git revision (branch, tag, or sha) that should be built
       default: master
     - name: image-url
+      description: The dev image (use image-release for released image)
       default: ""
     - name: image-server
+      description: The dev image registry server if params.image-url not provided
       default: ""
     - name: image-namespace
+      description: The dev image registry namespace if params.image-url not provided
       default: ""
     - name: image-repository
+      description: The dev image registry repository/imagename if params.image-url not provided
       default: ""
     - name: image-tag
+      description: The dev image registry tag if params.image-url not provided
       default: ""
     - name: image-release
+      description: The url of final released image
       default: ""
     - name: app-namespace
+      description: The openshift/kubernetes namespace to deploy dev app
       default: ""
     - name: app-name
+      description: The app name to be use in openshift/kuberentes deployment and helm chart
       default: ""
   tasks:
     - name: setup
@@ -58,6 +68,8 @@ spec:
           value: "$(tasks.setup.results.git-url)"
         - name: git-revision
           value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
         - name: js-image
           value: "$(tasks.setup.results.js-image)"
     - name: build
@@ -70,6 +82,8 @@ spec:
           value: "$(tasks.setup.results.git-url)"
         - name: git-revision
           value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
         - name: image-server
           value: "$(tasks.setup.results.image-server)"
         - name: image-namespace
@@ -88,6 +102,8 @@ spec:
           value: "$(tasks.setup.results.git-url)"
         - name: git-revision
           value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
         - name: image-server
           value: "$(tasks.setup.results.image-server)"
         - name: image-namespace
@@ -132,6 +148,8 @@ spec:
           value: "$(tasks.setup.results.git-url)"
         - name: git-revision
           value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
         - name: js-image
           value: "$(tasks.setup.results.js-image)"
     - name: img-release
@@ -144,3 +162,23 @@ spec:
           value: "$(tasks.setup.results.image-url)"
         - name: image-to
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
+    - name: helm-release
+      taskRef:
+        name: ibm-helm-release
+      runAfter:
+        - img-release
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
+        - name: image-url
+          value: "$(tasks.img-release.results.image-url)"
+        - name: app-name
+          value: "$(tasks.setup.results.app-name)"
+        - name: deploy-ingress-type
+          value: "$(tasks.setup.results.deploy-ingress-type)"
+        - name: tools-image
+          value: "$(tasks.setup.results.tools-image)"
