@@ -70,7 +70,8 @@ spec:
         git config --global user.name "Cloud Native Toolkit Pipeline"
         if [[ $(git describe --tag `git rev-parse HEAD`) =~ (^[0-9]+.[0-9]+.[0-9]+$) ]]; then
             echo "Latest commit is already tagged"
-            echo "NEW_TAG=$(git describe --abbrev=0 --tags)" >> ./.env-config
+            NEW_TAG="$(git describe --abbrev=0 --tags)"
+            echo -n "${NEW_TAG}" | tee $(results.tag.path)
             exit 0
         fi
         mkdir -p ~/.npm
@@ -86,7 +87,9 @@ spec:
           -VV
         
         if [[ -z "$(params.skip-push)" ]]; then
-          git push --follow-tags -v
+          set +x
+          git push --tags -v
+          set -x
         fi
         
         NEW_TAG="$(git describe --abbrev=0 --tags)"
