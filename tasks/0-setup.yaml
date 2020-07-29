@@ -45,6 +45,7 @@ spec:
   results:
     - name: git-url
     - name: git-revision
+    - name: image-url
     - name: image-server
     - name: image-namespace
     - name: image-repository
@@ -171,6 +172,7 @@ spec:
         echo -n "${REGISTRY_NAMESPACE}">$(results.image-namespace.path)
         echo -n "${REGISTRY_REPOSITORY}">$(results.image-repository.path)
         echo -n "${REGISTRY_TAG}">$(results.image-tag.path)
+        echo -n "${REGISTRY_SERVER}/${REGISTRY_NAMESPACE}/${REGISTRY_REPOSITORY}:${REGISTRY_TAG}">$(results.image-url.path)
 
 
         if [[ -z "$(params.app-namespace)" ]]; then

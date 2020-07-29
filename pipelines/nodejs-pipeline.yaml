@@ -141,6 +141,6 @@ spec:
         - tag-release
       params:
         - name: image-from
-          value: "$(tasks.setup.results.image-server)/$(tasks.setup.results.image-namespace)/$(tasks.setup.results.image-repository):$(tasks.setup.results.image-tag)"
+          value: "$(tasks.setup.results.image-url)"
         - name: image-to
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
