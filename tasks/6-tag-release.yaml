@@ -56,6 +56,7 @@ spec:
         cd $(params.source-dir)
         git checkout $(params.git-revision)
         git reset --hard $(params.git-revision)
+        git switch -c local
     - name: git-tag
       image: $(params.js-image)
       workingdir: $(params.source-dir)
@@ -76,12 +77,12 @@ spec:
         npm config set prefix ~/.npm
         export PATH=$PATH:~/.npm/bin
         npm i -g release-it
-        release-it patch ${PRE_RELEASE} \
+        release-it patch \
           --ci \
           --no-npm \
           --no-git.push \
           --no-git.requireCleanWorkingDir \
-          --verbose \
+          --no-git.requireUpstream \
           -VV
         
         if [[ -z "$(params.skip-push)" ]]; then
