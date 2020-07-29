@@ -17,6 +17,8 @@ spec:
       default: ""
     - name: image-tag
       default: ""
+    - name: image-release
+      default: ""
     - name: app-namespace
       default: ""
     - name: app-name
@@ -40,6 +42,8 @@ spec:
           value: $(params.image-repository)
         - name: image-tag
           value: $(params.image-tag)
+        - name: image-release
+          value: $(params.image-release)
         - name: app-namespace
           value: $(params.app-namespace)
         - name: app-name
@@ -130,3 +134,13 @@ spec:
           value: "$(tasks.setup.results.git-revision)"
         - name: js-image
           value: "$(tasks.setup.results.js-image)"
+    - name: img-release
+      taskRef:
+        name: ibm-img-release
+      runAfter:
+        - tag-release
+      params:
+        - name: image-from
+          value: "$(tasks.setup.results.image-server)/$(tasks.setup.results.image-namespace)/$(tasks.setup.results.image-repository):$(tasks.setup.results.image-tag)"
+        - name: image-to
+          value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
