@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: ibm-helm-package
+  name: ibm-helm-release
   annotations:
     description: Publishes the helm chart to the helm repository using the version provided in the image-url
     app.openshift.io/description: Publishes the helm chart to the helm repository using the version provided in the image-url
