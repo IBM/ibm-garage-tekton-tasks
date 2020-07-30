@@ -67,7 +67,7 @@ spec:
         cd $(params.source-dir)
         git checkout $(params.git-revision)
     - name: deploy
-      image: $(inputs.params.tools-image)
+      image: $(params.tools-image)
       workingdir: $(params.source-dir)
       env:
         - name: TLS_SECRET_NAME

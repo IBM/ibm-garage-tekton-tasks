@@ -58,9 +58,8 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
-        git reset --hard $(params.git-revision)
     - name: package-helm
-      image: $(inputs.params.tools-image)
+      image: $(params.tools-image)
       workingdir: $(params.source-dir)
       env:
         - name: TLS_SECRET_NAME

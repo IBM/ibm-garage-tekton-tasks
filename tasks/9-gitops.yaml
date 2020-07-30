@@ -90,8 +90,6 @@ spec:
           BRANCH="$(params.git-branch)"
           APP_NAME="$(params.app-name)"
           PATH_EXPRESSION="$(params.path-expression)"
-          echo "${PATH_EXPRESSION}"
-          #exit 0
           SUBDIR="$(params.subdir)"
           if [[ -z "${SUBDIR}" ]]; then
             SUBDIR="$(params.app-name)"

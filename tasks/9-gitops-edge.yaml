@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: ibm-gitops-edge
@@ -10,91 +10,140 @@ metadata:
   labels:
     version: 0.0.0
 spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: image-url
+      default: ""
+    - name: service-name
+      default: ""
+    - name: version
+      default: ""
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.1.3
   volumes:
+    - name: source
+      emptyDir: {}
     - name: icp-ca
       secret:
         secretName: edge-access
         items:
           - key: HZN_CERTIFICATE
             path: icp-ca.crt
-  inputs:
-    resources:
+  stepTemplate:
+    volumeMounts:
       - name: source
-        type: git
-      - name: image
-        type: image
-    params:
-      - name: tools-image
-        type: string
-        default: garagecatalyst/ibmcloud-dev:1.1.3
+        mountPath: $(params.source-dir)
   steps:
-    - name: setup
-      image: $(inputs.params.tools-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
+    - name: git-clone
+      image: alpine/git
       env:
-        - name: BRANCH
-          value: "$(inputs.resources.source.revision)"
-      args:
-        - -c
-        - |
-          set -x
-          set +e
-
-          git fetch --unshallow
-          git fetch --tags
-          git tag -l
-
-          git checkout ${BRANCH}
-
-          echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
-          echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
-
-          cat ./env-config
-
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
     - name: gitops-edge
-      image: $(inputs.params.tools-image)
-      workingdir: $(inputs.resources.source.path)
+      image: $(params.tools-image)
+      workingdir: $(params.source-dir)
       securityContext:
         allowPrivilegeEscalation : true
       env:
         - name: HOME
           value: /home/devops
-      envFrom:
-        - configMapRef:
-            name: ibmcloud-config
-            optional: true
-        - secretRef:
-            name: edge-access
-            optional: true
-        - secretRef:
-            name: ibmcloud-apikey
-            optional: true
+        - name: HZN_EXCHANGE_URL
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_EXCHANGE_URL
+              optional: true
+        - name: HZN_ORG_ID
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_ORG_ID
+              optional: true
+        - name: HZN_EXCHANGE_USER_AUTH
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_EXCHANGE_USER_AUTH
+              optional: true
+        - name: HZN_CERTIFICATE
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_CERTIFICATE
+              optional: true
       volumeMounts:
         - mountPath: /opt/certs
           name: icp-ca
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-          set -x
+      script: |
+          #!/usr/bin/env bash
+          set -ex
 
           if [[ -z "${HZN_EXCHANGE_URL}" ]]; then
             echo "Edge Exchange has not been configured. Skipping trigger step"
             exit 0
           fi
 
+          SERVICE_NAME="$(params.service-name)"
+          VERSION="$(params.version)"
+          REGISTRY_SERVER_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $1}')
+          REGISTRY_NAMESPACE_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $2}')
+          REGISTRY_REPOSITORY_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}')
+          REGISTRY_TAG_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}' | awk -F : '{print $2}')
+          BASE_IMAGE="${REGISTRY_SERVER_VALUE}/${REGISTRY_NAMESPACE_VALUE}"
+          
+          if [[ -z "${SERVICE_NAME}" ]]; then
+            # if service name not passed explicit assume to use image repository
+            SERVICE_NAME="${REGISTRY_REPOSITORY_VALUE}"
+          fi
+
+          if [[ -z "${VERSION}" ]]; then
+            # if version not passed explicit assume to use image tag
+            VERSION="${REGISTRY_TAG_VALUE}"
+          fi
+
+          if [[ -z "${SERVICE_NAME}" ]] || [[ -z "${VERSION}" ]] || [[ -z "${BASE_IMAGE}" ]] || [[ "${BASE_IMAGE}" = "/" ]]; then
+            echo "Edge Service, Version, or Base image parameters missing"
+            exit 1
+          fi
+          
           if [[ -z "${HZN_EXCHANGE_USER_AUTH}" ]] || [[ -z "${HZN_CERTIFICATE}" ]]; then
             echo "Edge Credentials or Certificate not set"
             exit 1
           fi
 
-          if [[ -z "${branch}" ]]; then
-            branch="master"
+          set +x
+          if [[ -z "${HZN_EXCHANGE_USER_AUTH}" ]] || [[ -z "${HZN_CERTIFICATE}" ]]; then
+            echo "Edge Credentials or Certificate not set"
+            exit 1
           fi
+          set -x
 
-          . ./env-config
+
 
           hzn version
 
@@ -103,13 +152,18 @@ spec:
 
           cp /opt/certs/icp-ca.crt /usr/local/share/ca-certificates && update-ca-certificates
 
-          APP_IMAGE="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}"
-
-          jq -n --arg HZN_ORG_ID "${HZN_ORG_ID}" \
-            --arg APP_IMAGE "${APP_IMAGE}" \
-            --arg IMAGE_NAME "${IMAGE_NAME}" \
-            --arg IMAGE_VERSION "${IMAGE_VERSION}" \
-            '{"HZN_ORG_ID": $HZN_ORG_ID, "MetadataVars": {"DOCKER_IMAGE_BASE": $APP_IMAGE,"SERVICE_NAME": $IMAGE_NAME,"SERVICE_VERSION": $IMAGE_VERSION} }' > ./horizon/hzn.json
+          mkdir -p ./horizon
+          
+          cat <<JSON >./horizon/hzn.json
+          {
+            "HZN_ORG_ID": "${HZN_ORG_ID}",
+            "MetadataVars": {
+              "DOCKER_IMAGE_BASE": "${BASE_IMAGE}",
+              "SERVICE_NAME": "${SERVICE_NAME}",
+              "SERVICE_VERSION": "${VERSION}"
+            }
+          }
+          JSON
 
           cat ./horizon/hzn.json
 
