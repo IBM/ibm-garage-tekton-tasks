@@ -23,6 +23,8 @@ spec:
       default: ""
     - name: yaml
       default: "requirements.yaml"
+    - name: path-expression
+      default: "dependencies[?(@.name == '${APP_NAME}')].version"
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
   volumes:
@@ -87,10 +89,14 @@ spec:
 
           BRANCH="$(params.git-branch)"
           APP_NAME="$(params.app-name)"
+          PATH_EXPRESSION="$(params.path-expression)"
+          echo "${PATH_EXPRESSION}"
+          #exit 0
           SUBDIR="$(params.subdir)"
           if [[ -z "${SUBDIR}" ]]; then
             SUBDIR="$(params.app-name)"
           fi
+          YAML_FILE="$(params.yaml)"
           VERSION="$(params.version)"
 
           if [[ -z "${GIT_HOST}" ]] || [[ -z "${GIT_ORG}" ]] || [[ -z "${GIT_REPO}" ]]; then
@@ -122,14 +128,14 @@ spec:
           cd gitops_cd/${SUBDIR}
 
           echo "Requirements before update"
-          cat "./requirements.yaml"
+          cat "./${YAML_FILE}"
 
           # TODO avoid using igc to use yq
           npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
-          igc yq w ./requirements.yaml "dependencies[?(@.name == '${APP_NAME}')].version" ${VERSION} -i
+          igc yq w "./${YAML_FILE}" "${PATH_EXPRESSION}" ${VERSION} -i
 
           echo "Requirements after update"
-          cat "./requirements.yaml"
+          cat "./${YAML_FILE}"
 
           if [[ $(git status -s | wc -l) -eq 0 ]]; then
             echo "No changes"

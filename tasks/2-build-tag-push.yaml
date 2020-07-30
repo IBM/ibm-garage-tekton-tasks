@@ -73,7 +73,6 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
-        git reset --hard $(params.git-revision)
     - name: build
       image: $(params.BUILDER_IMAGE)
       workingdir: $(params.source-dir)
@@ -98,8 +97,11 @@ spec:
       script: |
         APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
         buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
+        set +x
         if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
           buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
+          echo "buildah login -u "${REGISTRY_USER}" -p "xxxxx" "$(params.image-server)""
         fi
+        set -x
         buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
 

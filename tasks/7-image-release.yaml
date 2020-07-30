@@ -17,6 +17,10 @@ spec:
       default: ""
     - name: SKOPEO_IMAGE
       default: quay.io/containers/skopeo:v1.1.0
+    - name: IMAGE_FROM_TLS_VERIFY
+      default: "true"
+    - name: IMAGE_TO_TLS_VERIFY
+      default: "true"
   results:
     - name: image-url
       description: The url of the image to be pushed
@@ -49,20 +53,27 @@ spec:
         REGISTRY_SERVER_FROM=$(echo "${IMAGE_FROM}" | awk -F / '{print $1}')
         IMAGE_TO="$(params.image-to)"
         REGISTRY_SERVER_TO=$(echo "${IMAGE_TO}" | awk -F / '{print $1}')
+        IMAGE_FROM_TLS_VERIFY=$(params.IMAGE_FROM_TLS_VERIFY)
+        IMAGE_TO_TLS_VERIFY=$(params.IMAGE_TO_TLS_VERIFY)
 
         echo "Tagging ${IMAGE_FROM} as ${IMAGE_TO}"
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "${REGISTRY_SERVER_FROM}" != "image-registry.openshift-image-registry.svc:5000" ]]; then
+        set +x
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ ! "${REGISTRY_SERVER_FROM}" =~ ":" ]]; then
           IMAGE_FROM_CREDS="--src-creds ${REGISTRY_USER}:${REGISTRY_PASSWORD}"
         fi
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "${REGISTRY_SERVER_TO}" != "image-registry.openshift-image-registry.svc:5000" ]]; then
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ ! "${REGISTRY_SERVER_TO}" =~ ":" ]]; then
           IMAGE_TO_CREDS="--dest-creds ${REGISTRY_USER}:${REGISTRY_PASSWORD}"
         fi
-        if [[ "${REGISTRY_SERVER_FROM}" = "image-registry.openshift-image-registry.svc:5000" ]]; then
-          IMAGE_FROM_TLS="--src-tls-verify=false"
+        set -x
+        if [[ "${REGISTRY_SERVER_FROM}" =~ ":" ]]; then
+          IMAGE_FROM_TLS_VERIFY="false"
         fi
-        if [[ "${REGISTRY_SERVER_TO}" = "image-registry.openshift-image-registry.svc:5000" ]]; then
-          IMAGE_TO_TLS="--dest-tls-verify=false"
+        if [[ "${REGISTRY_SERVER_TO}" =~ ":" ]]; then
+          IMAGE_TO_TLS_VERIFY="false"
         fi
         
-        skopeo copy ${IMAGE_FROM_CREDS} ${IMAGE_FROM_TLS} ${IMAGE_TO_CREDS} ${IMAGE_TO_TLS} docker://${IMAGE_FROM} docker://${IMAGE_TO}
+        echo "skopeo copy --src-creds=xxxx --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} --dest-creds=xxxx --dest-tls-verify=${IMAGE_TO_TLS_VERIFY} docker://${IMAGE_FROM} docker://${IMAGE_TO}"
+        set +x
+        skopeo copy ${IMAGE_FROM_CREDS} --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} ${IMAGE_TO_CREDS} --dest-tls-verify=${IMAGE_TO_TLS_VERIFY} docker://${IMAGE_FROM} docker://${IMAGE_TO}
+        set -x
         echo -n "${IMAGE_TO}" | tee $(results.image-url.path)

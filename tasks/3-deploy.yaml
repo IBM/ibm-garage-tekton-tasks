@@ -66,7 +66,6 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
-        git reset --hard $(params.git-revision)
     - name: deploy
       image: $(inputs.params.tools-image)
       workingdir: $(params.source-dir)

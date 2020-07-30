@@ -52,7 +52,6 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
-        git reset --hard $(params.git-revision)
     - name: build
       image: $(params.js-image)
       workingdir: $(params.source-dir)
