@@ -27,7 +27,7 @@ spec:
     - name: app-namespace
       default: ""
     - name: app-name
-      default: "$(params.image-repository)"
+      default: ""
     - name: deploy-ingress-type
       default: "route"
     - name: tools-image
@@ -90,6 +90,9 @@ spec:
           GIT_REVISION="$(params.git-revision)"
           APP_NAMESPACE="$(params.app-namespace)"
           APP_NAME="$(params.app-name)"
+          if [[ -z "${APP_NAME}" ]]; then
+            APP_NAME="$(params.image-repository)"
+          fi
           IMAGE_SERVER="$(params.image-server)"
           IMAGE_NAMESPACE="$(params.image-namespace)"
           IMAGE_REPOSITORY="$(params.image-repository)"

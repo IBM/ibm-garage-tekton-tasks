@@ -10,110 +10,126 @@ metadata:
   labels:
     version: 0.0.0
 spec:
-  inputs:
-    resources:
+  params:
+    - name: app-name
+      default: ""
+    - name: version
+      default: ""
+    - name: git-branch
+      default: master
+    - name: source-dir
+      default: /source
+    - name: subdir
+      default: ""
+    - name: yaml
+      default: "requirements.yaml"
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.1.3
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
       - name: source
-        type: git
-      - name: image
-        type: image
-    params:
-      - name: js-image
-        type: string
-        default: docker.io/node:12-stretch
-      - name: tools-image
-        type: string
-        default: garagecatalyst/ibmcloud-dev:1.0.10
+        mountPath: $(params.source-dir)
   steps:
-    - name: setup
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      env:
-        - name: BRANCH
-          value: "$(inputs.resources.source.revision)"
-      args:
-        - -c
-        - |
-          set -x
-          set +e
-
-          git fetch --unshallow
-          git fetch --tags
-          git tag -l
-
-          git checkout ${BRANCH}
-
-          echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
-          echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
-
-          cat ./env-config
     - name: gitops
-      image: $(inputs.params.tools-image)
-      workingdir: $(inputs.resources.source.path)
+      image: $(params.tools-image)
+      workingdir: $(params.source-dir)
       env:
         - name: HOME
           value: /home/devops
-        - name: GIT_AUTH_USER
+        - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef:
+            secretKeyRef: 
               name: git-credentials
               key: username
               optional: true
-        - name: GIT_AUTH_PWD
+        - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef:
+            secretKeyRef: 
               name: git-credentials
               key: password
               optional: true
-      envFrom:
-        - configMapRef:
-            name: gitops-cd-secret
-            optional: true
-        - configMapRef:
-            name: gitops-repo
-            optional: true
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-          set -x
+        - name: GIT_USERNAME_CD
+          valueFrom:
+            secretKeyRef: 
+              name: gitops-cd-secret
+              key: username
+              optional: true
+        - name: GIT_PASSWORD_CD
+          valueFrom:
+            secretKeyRef: 
+              name: gitops-cd-secret
+              key: password
+              optional: true
+        - name: GIT_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: host
+              optional: true
+        - name: GIT_ORG
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: org
+              optional: true
+        - name: GIT_REPO
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: repo
+              optional: true
+      script: |
+          #!/usr/bin/env bash
+          set -ex
 
-          if [[ -z "${host}" ]] || [[ -z "${org}" ]] || [[ -z "${repo}" ]]; then
-              echo "GitOps repo has not been configured. Skipping trigger step"
+          BRANCH="$(params.git-branch)"
+          APP_NAME="$(params.app-name)"
+          SUBDIR="$(params.subdir)"
+          if [[ -z "${SUBDIR}" ]]; then
+            SUBDIR="$(params.app-name)"
+          fi
+          VERSION="$(params.version)"
+
+          if [[ -z "${GIT_HOST}" ]] || [[ -z "${GIT_ORG}" ]] || [[ -z "${GIT_REPO}" ]]; then
+              echo "GitOps repo has not been configured with confimap gitops-repo. Skipping trigger step"
               exit 0
           fi
 
-          if [[ -z "${GIT_AUTH_USER}" ]] || [[ -z "${GIT_AUTH_PWD}" ]]; then
-              echo "Credentials for GitOps repo not set"
-              exit 1
+          set +x
+          if [[ -n "${GIT_USERNAME_CD}" ]]; then
+            GIT_AUTH_USER="${GIT_USERNAME_CD}"
+            GIT_AUTH_PWD="${GIT_PASSWORD_CD}"
+          elif [[ -n "${GIT_USERNAME}" ]]; then
+            GIT_AUTH_USER="${GIT_USERNAME}"
+            GIT_AUTH_PWD="${GIT_PASSWORD}"
+          else
+            echo "Credentials for GitOps repo not set in secret gitops-cd-secret or git-credentials"
+            exit 1
           fi
-
-          if [[ -z "${branch}" ]]; then
-              branch="master"
-          fi
-
-          . ./env-config
-
-          git config --global user.email "cloud-native-toolkit@example.com"
+          set -x
+          
+          git config --global user.email "gitops@cloudnativetoolkit.dev"
           git config --global user.name "Cloud Native Toolkit Pipeline"
-
-          GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${host}/${org}/${repo}"
-
-          echo "Cloning repo: https://${GIT_AUTH_USER}:xxxx@${host}/${org}/${repo}"
-
-          git clone -b ${branch} ${GIT_URL} gitops_cd
-          cd gitops_cd
+          echo "Cloning repo: https://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+          set +x
+          GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+          git clone -b ${BRANCH} ${GIT_URL} gitops_cd
+          set -x
+          
+          cd gitops_cd/${SUBDIR}
 
           echo "Requirements before update"
-          cat "./${IMAGE_NAME}/requirements.yaml"
+          cat "./requirements.yaml"
 
           # TODO avoid using igc to use yq
-          npm i -g @garage-catalyst/ibm-garage-cloud-cli
-          igc yq w ./${IMAGE_NAME}/requirements.yaml "dependencies[?(@.name == '${IMAGE_NAME}')].version" ${IMAGE_VERSION} -i
+          npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
+          igc yq w ./requirements.yaml "dependencies[?(@.name == '${APP_NAME}')].version" ${VERSION} -i
 
           echo "Requirements after update"
-          cat "./${IMAGE_NAME}/requirements.yaml"
+          cat "./requirements.yaml"
 
           if [[ $(git status -s | wc -l) -eq 0 ]]; then
             echo "No changes"
@@ -121,5 +137,5 @@ spec:
           fi
 
           git add -u
-          git commit -m "Updates ${IMAGE_NAME} to ${IMAGE_VERSION}"
+          git commit -m "Updates ${APP_NAME} to ${VERSION}"
           git push -v
