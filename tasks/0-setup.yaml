@@ -38,6 +38,8 @@ spec:
       default: "https"
     - name: health-endpoint
       default: "/health"
+    - name: va-scan
+      default: "false"
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
     - name: js-image
@@ -59,6 +61,7 @@ spec:
     - name: health-endpoint
     - name: tools-image
     - name: js-image
+    - name: va-scan
   volumes:
     - name: source
       emptyDir: {}
@@ -120,6 +123,7 @@ spec:
         echo -n "$(params.health-endpoint)">$(results.health-endpoint.path)
         echo -n "$(params.tools-image)">$(results.tools-image.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
+        echo -n "$(params.va-scan)">$(results.va-scan.path)
 
         
         REGISTRY_SERVER="$(params.image-server)"

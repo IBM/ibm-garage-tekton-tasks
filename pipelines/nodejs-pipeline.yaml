@@ -33,6 +33,9 @@ spec:
     - name: app-name
       description: The app name to be use in openshift/kuberentes deployment and helm chart
       default: ""
+    - name: va-scan
+      description: Flag indicating that a Vulnerability Advisor scan should be performed
+      default: "false"
   tasks:
     - name: setup
       taskRef:
@@ -58,6 +61,8 @@ spec:
           value: $(params.app-namespace)
         - name: app-name
           value: $(params.app-name)
+        - name: va-scan
+          value: $(params.va-scan)
     - name: test
       taskRef:
         name: ibm-nodejs-test
@@ -162,11 +167,21 @@ spec:
           value: "$(tasks.setup.results.image-url)"
         - name: image-to
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
+    - name: scan
+      taskRef:
+        name: ibm-img-scan-ibm
+      runAfter:
+        - img-release
+      params:
+        - name: image-url
+          value: $(tasks.img-release.results.image-url)
+        - name: perform-scan
+          value: $(params.va-scan)
     - name: helm-release
       taskRef:
         name: ibm-helm-release
       runAfter:
-        - img-release
+        - scan
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
