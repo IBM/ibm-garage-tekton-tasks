@@ -165,7 +165,7 @@ spec:
       taskRef:
         name: ibm-tag-release
       runAfter:
-        - health
+        - pact-verify
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
