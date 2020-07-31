@@ -174,6 +174,7 @@ spec:
             sed "s/deployment.apps/deployment/g" | \
             sed "s/statefulset.apps/statefulset/g" | \
             sed "s/configured//g" | \
+            sed "s/created//g" | \
             sed "s/unchanged//g" | while read target; do
             echo "Waiting for rollout of ${target} in ${APP_NAMESPACE}"
             kubectl rollout status -n ${APP_NAMESPACE} ${target}

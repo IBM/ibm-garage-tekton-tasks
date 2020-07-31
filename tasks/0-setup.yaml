@@ -146,7 +146,7 @@ spec:
             fi
           fi
 
-          REGISTRY_REPOSITORY_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}')
+          REGISTRY_REPOSITORY_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}' |  awk -F : '{print $1}')
           if [[ -n "${REGISTRY_REPOSITORY_VALUE}" ]]; then
             REGISTRY_REPOSITORY="${REGISTRY_REPOSITORY_VALUE}"
           fi
