@@ -12,28 +12,10 @@ spec:
     - name: image-url
       description: The dev image (use image-release for released image)
       default: ""
-    - name: image-server
-      description: The dev image registry server if params.image-url not provided
-      default: ""
-    - name: image-namespace
-      description: The dev image registry namespace if params.image-url not provided
-      default: ""
-    - name: image-repository
-      description: The dev image registry repository/imagename if params.image-url not provided
-      default: ""
-    - name: image-tag
-      description: The dev image registry tag if params.image-url not provided
-      default: ""
     - name: image-release
       description: The url of final released image
       default: ""
-    - name: app-namespace
-      description: The openshift/kubernetes namespace to deploy dev app
-      default: ""
-    - name: app-name
-      description: The app name to be use in openshift/kuberentes deployment and helm chart
-      default: ""
-    - name: va-scan
+    - name: scan-image
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
   tasks:
@@ -47,22 +29,10 @@ spec:
           value: $(params.git-revision)
         - name: image-url
           value: $(params.image-url)
-        - name: image-server
-          value: $(params.image-server)
-        - name: image-namespace
-          value: $(params.image-namespace)
-        - name: image-repository
-          value: $(params.image-repository)
-        - name: image-tag
-          value: $(params.image-tag)
         - name: image-release
           value: $(params.image-release)
-        - name: app-namespace
-          value: $(params.app-namespace)
-        - name: app-name
-          value: $(params.app-name)
-        - name: va-scan
-          value: $(params.va-scan)
+        - name: scan-image
+          value: $(params.scan-image)
     - name: test
       taskRef:
         name: ibm-nodejs-test
@@ -175,8 +145,8 @@ spec:
       params:
         - name: image-url
           value: $(tasks.img-release.results.image-url)
-        - name: perform-scan
-          value: $(params.va-scan)
+        - name: scan-image
+          value: $(params.scan-image)
     - name: helm-release
       taskRef:
         name: ibm-helm-release

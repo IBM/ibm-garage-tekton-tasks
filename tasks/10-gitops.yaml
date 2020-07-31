@@ -102,6 +102,7 @@ spec:
           fi
           YAML_FILE="$(params.yaml)"
           VERSION="$(params.version)"
+          HELM_URL="$(params.helm-url)"
 
           if [[ -z "${GIT_HOST}" ]] || [[ -z "${GIT_ORG}" ]] || [[ -z "${GIT_REPO}" ]]; then
               echo "GitOps repo has not been configured with confimap gitops-repo. Skipping trigger step"
@@ -136,11 +137,12 @@ spec:
 
             # TODO avoid using igc to use yq
             npm i -g @garage-catalyst/ibm-garage-cloud-cli
-            igc yq w "./${SUBDIR}/${YAML_FILE}" "${PATH_EXPRESSION}" ${VERSION} -i
+            igc yq w "./${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].version" ${VERSION} -i
+            igc yq w "./${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].repository" ${HELM_URL} -i
 
             echo "Requirements after update"
             cat "./${SUBDIR}/${YAML_FILE}"
-          elif [[ -n "$(params.helm-url)" ]]; then
+          elif [[ -n "${HELM_URL}" ]]; then
             mkdir -p "${SUBDIR}"
 
             echo "apiVersion: v2" | \
@@ -152,7 +154,7 @@ spec:
             echo "dependencies: []" | \
               yq w - "dependencies[0].name" "${APP_NAME}" | \
               yq w - "dependencies[0].version" "${VERSION}" | \
-              yq w - "dependencies[0].repository" "$(params.helm-url)" \
+              yq w - "dependencies[0].repository" "${HELM_URL}" \
               > "${SUBDIR}/${YAML_FILE}"
 
             echo "global: {}" | \

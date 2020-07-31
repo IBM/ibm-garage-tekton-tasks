@@ -257,6 +257,6 @@ spec:
           echo "curl -u${HELM_USER}:xxxx -s -T index.yaml ${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
           curl -u${HELM_USER}:${HELM_PASSWORD} -s -T index.yaml "${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
 
-          echo -n "${HELM_URL}/${REGISTRY_NAMESPACE}" | tee $(results.helm-url.path)
+          echo -n "${HELM_URL}/${IMAGE_NAMESPACE}" | tee $(results.helm-url.path)
 
           

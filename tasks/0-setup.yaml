@@ -12,33 +12,45 @@ metadata:
 spec:
   params:
     - name: git-url
+      description: The url for the git repository
     - name: git-revision
+      description: The git revision (branch, tag, or sha) that should be built
       default: master
     - name: source-dir
       default: /source
     - name: image-url
+      description: The dev image (use image-release for released image)
       default: ""
     - name: image-server
+      description: The dev image registry server if params.image-url not provided
       default: ""
     - name: image-namespace
+      description: The dev image registry namespace if params.image-url not provided
       default: ""
     - name: image-repository
+      description: The dev image registry repository/imagename if params.image-url not provided
       default: ""
     - name: image-tag
+      description: The dev image registry tag if params.image-url not provided
       default: ""
     - name: image-release
+      description: The url of final released image
       default: ""
     - name: app-namespace
+      description: The openshift/kubernetes namespace to deploy dev app
       default: ""
     - name: app-name
+      description: The app name to be use in openshift/kuberentes deployment and helm chart
       default: ""
     - name: deploy-ingress-type
       default: "route"
     - name: health-protocol
       default: "https"
     - name: health-endpoint
+      description: Endpoint to check health after deployment, liberty uses / not /health
       default: "/health"
-    - name: va-scan
+    - name: scan-image
+      description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
@@ -61,7 +73,7 @@ spec:
     - name: health-endpoint
     - name: tools-image
     - name: js-image
-    - name: va-scan
+    - name: scan-image
   volumes:
     - name: source
       emptyDir: {}
@@ -123,7 +135,7 @@ spec:
         echo -n "$(params.health-endpoint)">$(results.health-endpoint.path)
         echo -n "$(params.tools-image)">$(results.tools-image.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
-        echo -n "$(params.va-scan)">$(results.va-scan.path)
+        echo -n "$(params.scan-image)">$(results.scan-image.path)
 
         
         REGISTRY_SERVER="$(params.image-server)"
