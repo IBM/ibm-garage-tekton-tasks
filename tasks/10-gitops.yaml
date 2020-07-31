@@ -123,16 +123,24 @@ spec:
           git clone -b ${BRANCH} ${GIT_URL} gitops_cd
           set -x
           
+          if [[ ! -d gitops_cd/${SUBDIR} ]]; then
+           echo "Directory /${SUBDIR} DOES NOT exists. Skiping gitops edit"
+           exit 0
+          fi
           cd gitops_cd/${SUBDIR}
+          if [[ ! -f ${YAML_FILE} ]]; then
+           echo "File /${SUBDIR}/${YAML_FILE} DOES NOT exists. Skiping gitops edit"
+           exit 0
+          fi
 
-          echo "Requirements before update"
+          echo "YAML file ${YAML_FILE} file before update"
           cat "./${YAML_FILE}"
 
           # TODO avoid using igc to use yq
           npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
           igc yq w "./${YAML_FILE}" "${PATH_EXPRESSION}" ${VERSION} -i
 
-          echo "Requirements after update"
+          echo "YAML file ${YAML_FILE}  after update"
           cat "./${YAML_FILE}"
 
           if [[ $(git status -s | wc -l) -eq 0 ]]; then
