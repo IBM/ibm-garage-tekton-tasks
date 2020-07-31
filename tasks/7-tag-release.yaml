@@ -60,6 +60,8 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
+        # Need to create  branch to make release-it work
+        git switch -c local
     - name: git-tag
       image: $(params.js-image)
       workingdir: $(params.source-dir)
@@ -81,9 +83,6 @@ spec:
         npm config set prefix ~/.npm
         export PATH=$PATH:~/.npm/bin
         npm i -g release-it
-
-        # Need to create  branch to make release-it work
-        git switch -c local
 
         release-it patch \
           --ci \
