@@ -16,7 +16,7 @@ spec:
     - name: version
       default: ""
     - name: git-branch
-      default: master
+      default: ""
     - name: source-dir
       default: /source
     - name: subdir
@@ -25,6 +25,8 @@ spec:
       default: "requirements.yaml"
     - name: path-expression
       default: "dependencies[?(@.name == '${APP_NAME}')].version"
+    - name: helm-url
+      default: ""
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
   volumes:
@@ -87,7 +89,11 @@ spec:
           #!/usr/bin/env bash
           set -ex
 
-          BRANCH="$(params.git-branch)"
+          BRANCH_CMD=""
+          if [[ -n "$(params.git-branch)" ]]; then
+            BRANCH_CMD="-b $(params.app-name)"
+          fi
+
           APP_NAME="$(params.app-name)"
           PATH_EXPRESSION="$(params.path-expression)"
           SUBDIR="$(params.subdir)"
@@ -120,34 +126,48 @@ spec:
           echo "Cloning repo: https://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
           set +x
           GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
-          git clone -b ${BRANCH} ${GIT_URL} gitops_cd
+          git clone ${BRANCH_CMD} ${GIT_URL} gitops_cd
           set -x
-          
-          if [[ ! -d gitops_cd/${SUBDIR} ]]; then
-           echo "Directory /${SUBDIR} DOES NOT exists. Skiping gitops edit"
-           exit 0
+          cd gitops_cd
+
+          if [[ -d "${SUBDIR}" ]]; then
+            echo "Requirements before update"
+            cat "./${SUBDIR}/${YAML_FILE}"
+
+            # TODO avoid using igc to use yq
+            npm i -g @garage-catalyst/ibm-garage-cloud-cli
+            igc yq w "./${SUBDIR}/${YAML_FILE}" "${PATH_EXPRESSION}" ${VERSION} -i
+
+            echo "Requirements after update"
+            cat "./${SUBDIR}/${YAML_FILE}"
+          elif [[ -n "$(params.helm-url)" ]]; then
+            mkdir -p "${SUBDIR}"
+
+            echo "apiVersion: v2" | \
+              yq w - version "0.1.0" | \
+              yq w - name "${APP_NAME}" | \
+              yq w - description "Chart to configure ArgoCD with the ${APP_NAME} project and its applications" \
+              > "${SUBDIR}/Chart.yaml"
+
+            echo "dependencies: []" | \
+              yq w - "dependencies[0].name" "${APP_NAME}" | \
+              yq w - "dependencies[0].version" "${VERSION}" | \
+              yq w - "dependencies[0].repository" "$(params.helm-url)" \
+              > "${SUBDIR}/${YAML_FILE}"
+
+            echo "global: {}" | \
+              yq w - "${APP_NAME}.replicaCount" "1" \
+              > "${SUBDIR}/values.yaml"
+          else
+            echo "GitOps repo configured but unable to update application config"
+            exit 1
           fi
-          cd gitops_cd/${SUBDIR}
-          if [[ ! -f ${YAML_FILE} ]]; then
-           echo "File /${SUBDIR}/${YAML_FILE} DOES NOT exists. Skiping gitops edit"
-           exit 0
-          fi
-
-          echo "YAML file ${YAML_FILE} file before update"
-          cat "./${YAML_FILE}"
-
-          # TODO avoid using igc to use yq
-          npm i -g @ibmgaragecloud/cloud-native-toolkit-cli
-          igc yq w "./${YAML_FILE}" "${PATH_EXPRESSION}" ${VERSION} -i
-
-          echo "YAML file ${YAML_FILE}  after update"
-          cat "./${YAML_FILE}"
 
           if [[ $(git status -s | wc -l) -eq 0 ]]; then
             echo "No changes"
             exit 0
           fi
 
-          git add -u
+          git add "${SUBDIR}/"
           git commit -m "Updates ${APP_NAME} to ${VERSION}"
           git push -v

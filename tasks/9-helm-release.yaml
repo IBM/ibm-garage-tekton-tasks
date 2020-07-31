@@ -24,6 +24,9 @@ spec:
       default: "route"
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
+  results:
+    - name: helm-url
+      description: The url of the helm repository
   volumes:
     - name: source
       emptyDir: {}
@@ -254,5 +257,6 @@ spec:
           echo "curl -u${HELM_USER}:xxxx -s -T index.yaml ${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
           curl -u${HELM_USER}:${HELM_PASSWORD} -s -T index.yaml "${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
 
+          echo -n "${HELM_URL}/${REGISTRY_NAMESPACE}" | tee $(results.helm-url.path)
 
           

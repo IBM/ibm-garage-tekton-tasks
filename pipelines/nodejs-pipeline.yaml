@@ -207,5 +207,7 @@ spec:
           value: "$(tasks.setup.results.app-name)"
         - name: version
           value: "$(tasks.tag-release.results.tag)"
+        - name: helm-url
+          value: $(tasks.helm-release.results.helm-url)
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
