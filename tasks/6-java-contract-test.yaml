@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: ibm-gradle-pact-verify
@@ -10,88 +10,87 @@ metadata:
   labels:
     version: 0.0.0
 spec:
-  inputs:
-    resources:
-      - name: source
-        type: git
-    params:
-      - name: gradle-image
-        type: string
-        default: gradle:jdk11
-      - name: tools-image
-        type: string
-        default: garagecatalyst/ibmcloud-dev:1.0.10
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: service-protocol
+      default: "http"
+    - name: service-host
+    - name: service-port
+      default: "80"
+    - name: gradle-image
+      default: gradle:jdk11
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.1.3
+  volumes:
+    - name: source
+      emptyDir: {}
   stepTemplate:
-    env:
-      - name: GRADLE_USER_HOME
-        value: $(inputs.resources.source.path)
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
   steps:
-    - name: setup
-      image: $(inputs.params.tools-image)
-      workingdir: $(inputs.resources.source.path)
+    - name: git-clone
+      image: alpine/git
       env:
-        - name: NAMESPACE
+        - name: GIT_PASSWORD
           valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: BRANCH
-          value: "$(inputs.resources.source.revision)"
-      envFrom:
-        - configMapRef:
-            name: ibmcloud-config
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-          git fetch --unshallow
-          git fetch --tags
-          git tag -l
-
-          git checkout ${BRANCH}
-
-          IMAGE_VERSION=$(git describe --abbrev=0 --tags)
-          IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')
-
-          if [[ "${CLUSTER_TYPE}" == "openshift" ]]; then
-            HOST=$(kubectl get route/${IMAGE_NAME} --namespace ${NAMESPACE} --output=jsonpath='{ .spec.host }')
-            PROTOCOL="https"
-            PORT="443"
-          else
-            HOST=$(kubectl get ingress/${IMAGE_NAME} --namespace ${NAMESPACE} --output=jsonpath='{ .spec.rules[0].host }')
-            PROTOCOL="http"
-            PORT="80"
-          fi
-
-          echo "IMAGE_VERSION=${IMAGE_VERSION}" > ./env-config
-          echo "IMAGE_NAME=${IMAGE_NAME}" >> ./env-config
-          echo "HOST=${HOST}" >> ./env-config
-          echo "PORT=${PORT}" >> ./env-config
-          echo "PROTOCOL=${PROTOCOL}" >> ./env-config
-
-          chmod a+w ./env-config
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
     - name: pact-verify
-      image: $(inputs.params.gradle-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      envFrom:
-        - configMapRef:
-            name: pactbroker-config
-            optional: true
-        - secretRef:
-            name: pactbroker-access
-            optional: true
-      args:
-        - -c
-        - |
-          set -e
+      image: $(params.gradle-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: GRADLE_USER_HOME
+          value: $(params.source-dir)
+        - name: PACTBROKER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: pactbroker-config
+              key: PACTBROKER_URL
+              optional: true
+        - name: PACTBROKER_USER
+          valueFrom:
+            secretKeyRef: 
+              name: pactbroker-access
+              key: PACTBROKER_USER
+              optional: true
+        - name: PACTBROKER_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: pactbroker-access
+              key: PACTBROKER_PASSWORD
+              optional: true
+      script: |
+          #!/usr/bin/env bash
+          set -ex
+
           if [[ -z "${PACTBROKER_URL}" ]]; then
             echo "PactBroker url not set. Skipping pact verification"
             exit 0
           fi
-
-          set -x
-          . ./env-config
 
           if ./gradlew tasks --all | grep -Eq "^pactVerify"; then
               echo "Pact Verify task found"
@@ -99,6 +98,10 @@ spec:
               echo "Skipping Pact Verify step, no task defined"
               exit 0
           fi
+
+          PROTOCOL=$(params.service-protocol)
+          HOST=$(params.service-host)
+          PORT=$(params.service-port)
 
           ./gradlew pactVerify \
             -PpactBrokerUrl=${PACTBROKER_URL} \
