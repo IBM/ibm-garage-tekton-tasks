@@ -20,6 +20,8 @@ spec:
       default: "my-java-gradle-app"
     - name: gradle-image
       default: gradle:jdk11
+    - name: sonarqube-java-bin-path
+      default: build
     - name: sonarqube-cli
       default: sonarsource/sonar-scanner-cli
   volumes:
@@ -94,8 +96,8 @@ spec:
               key: SONARQUBE_PASSWORD
               optional: true
       script: |
- 
           APP_NAME=$(params.app-name)
+          SONARQUBE_JAVA_BINARIES_PATH="$(params.sonarqube-java-bin-path)"
 
           if ! command -v sonar-scanner &> /dev/null
           then
@@ -110,7 +112,7 @@ spec:
             -Dsonar.password=${SONARQUBE_PASSWORD} \
             -Dsonar.host.url=${SONARQUBE_URL} \
             -Dsonar.projectKey=${APP_NAME} \
-            -Dsonar.java.binaries=src/main/java,src/test/java
+            -Dsonar.java.binaries=${SONARQUBE_JAVA_BINARIES_PATH}
 
           else
               echo "Skipping Sonar Qube step for now but include"
