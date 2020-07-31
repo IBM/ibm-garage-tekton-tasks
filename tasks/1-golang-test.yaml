@@ -1,4 +1,4 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: ibm-golang-test
@@ -10,59 +10,88 @@ metadata:
   labels:
     version: 0.0.0
 spec:
-  inputs:
-    resources:
-      - name: source
-        type: git
-    params:
-      - name: golang-image
-        type: string
-        default: golang:stretch
-      - name: sonarqube-cli
-        type: string
-        default: sonarsource/sonar-scanner-cli
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: app-name
+      default: "my-golang-app"
+    - name: golang-image
+      default: golang:stretch
+    - name: sonarqube-cli
+      default: sonarsource/sonar-scanner-cli
+  volumes:
+    - name: source
+      emptyDir: {}
   stepTemplate:
-    envFrom:
-      - configMapRef:
-          name: pactbroker-config
-          optional: true
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
   steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
     - name: build
-      image: $(inputs.params.golang-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
+      image: $(params.golang-image)
+      workingdir: $(params.source-dir)
+      script: |
           go build ./...
     - name: test
-      image: $(inputs.params.golang-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
+      image: $(params.golang-image)
+      workingdir: $(params.source-dir)
+      script: |
           go test ./...
     - name: sonar-scan
-      image: $(inputs.params.sonarqube-cli)
-      workingdir: $(inputs.resources.source.path)
-      envFrom:
-        - configMapRef:
-            name: sonarqube-config
-            optional: true
-        - secretRef:
-            name: sonarqube-access
-            optional: true
+      image: $(params.sonarqube-cli)
+      workingdir: $(params.source-dir)
       env:
         - name: SONAR_USER_HOME
-          value: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
+          value: $(params.source-dir)
+        - name: SONARQUBE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: sonarqube-config
+              key: SONARQUBE_URL
+              optional: true
+        - name: SONARQUBE_USER
+          valueFrom:
+            secretKeyRef:
+              name: sonarqube-access
+              key: SONARQUBE_USER
+              optional: true
+        - name: SONARQUBE_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: sonarqube-access
+              key: SONARQUBE_PASSWORD
+              optional: true
+      script: |
+          APP_NAME=$(params.app-name)
 
           if ! command -v sonar-scanner &> /dev/null
           then
@@ -75,7 +104,8 @@ spec:
             sonar-scanner \
             -Dsonar.login=${SONARQUBE_USER} \
             -Dsonar.password=${SONARQUBE_PASSWORD} \
-            -Dsonar.host.url=${SONARQUBE_URL}
+            -Dsonar.host.url=${SONARQUBE_URL} \
+            -Dsonar.projectKey=${APP_NAME}
 
           else
               echo "Skipping Sonar Qube step for now but include"
