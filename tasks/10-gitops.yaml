@@ -145,21 +145,28 @@ spec:
           elif [[ -n "${HELM_URL}" ]]; then
             mkdir -p "${SUBDIR}"
 
-            echo "apiVersion: v2" | \
-              yq w - version "0.1.0" | \
-              yq w - name "${APP_NAME}" | \
-              yq w - description "Chart to configure ArgoCD with the ${APP_NAME} project and its applications" \
-              > "${SUBDIR}/Chart.yaml"
+          cat <<EOF >"${SUBDIR}/Chart.yaml"
+          apiVersion: v2
+          version: 0.1.0
+          name: ${APP_NAME}
+          description: Chart to configure ArgoCD with the ${APP_NAME} project and its applications
+          EOF
+          
+          cat <<EOF >"${SUBDIR}/${YAML_FILE}"
+          dependencies:
+            - name: ${APP_NAME}
+              version: ${VERSION}
+              repository: >-
+                ${HELM_URL}
+          EOF
 
-            echo "dependencies: []" | \
-              yq w - "dependencies[0].name" "${APP_NAME}" | \
-              yq w - "dependencies[0].version" "${VERSION}" | \
-              yq w - "dependencies[0].repository" "${HELM_URL}" \
-              > "${SUBDIR}/${YAML_FILE}"
+          cat <<EOF >"${SUBDIR}/values.yaml"
+          global: {}
+          ${APP_NAME}:
+            replicaCount: 1
+          EOF
 
-            echo "global: {}" | \
-              yq w - "${APP_NAME}.replicaCount" "1" \
-              > "${SUBDIR}/values.yaml"
+
           else
             echo "GitOps repo configured but unable to update application config"
             exit 1
