@@ -32,6 +32,8 @@ spec:
       default: "route"
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
+  results:
+    - name: service-port
   volumes:
     - name: source
       emptyDir: {}
@@ -176,3 +178,6 @@ spec:
             echo "Waiting for rollout of ${target} in ${APP_NAMESPACE}"
             kubectl rollout status -n ${APP_NAMESPACE} ${target}
           done
+          SERVICE_PORT=$(kubectl get svc "${APP_NAME}" -n "${APP_NAMESPACE}" -o jsonpath="{.spec.ports[?(@.name == 'http')].port}")
+          echo -n "${SERVICE_PORT}" | tee $(results.service-port.path)
+          
