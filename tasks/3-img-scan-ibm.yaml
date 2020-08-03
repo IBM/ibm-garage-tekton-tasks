@@ -1,0 +1,101 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-img-scan-ibm
+  annotations:
+    description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry
+    app.openshift.io/description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0 
+spec:
+  params:
+    - name: image-url
+      description: "The location of image to scan on IBM Container Registry <server>/<namespace>/<repository>:<tag>"
+    - name: scan-image
+      description: Flag indicating that a scan should be performed
+      default: "false"
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.1.3
+  volumes:
+    - name: source
+      emptyDir: {}
+  steps:
+    - name: scan-image
+      image: $(params.tools-image)
+      env:
+        - name: HOME
+          value: /home/devops
+        - name: IBM_CLOUD_APIKEY
+          valueFrom:
+            secretKeyRef:
+              key: APIKEY
+              name: ibmcloud-apikey
+              optional: true
+        - name: IBM_CLOUD_RESOURCE_GROUP
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: RESOURCE_GROUP
+              optional: true
+        - name: IBM_CLOUD_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: REGION
+              optional: true
+      script: |
+          #!/usr/bin/env bash
+          set -ex
+          
+          IMAGE_URL=$(params.image-url)
+          REGISTRY_SERVER=$(echo $(params.image-url) | awk -F / '{print $1}')
+          PERFORM_SCAN="$(params.scan-image)"
+
+          if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+            echo "User selected to skip scanning. Skipping Vulnerability Advisor validation."
+            exit 0
+          fi
+          if [[ ! "${REGISTRY_SERVER}" =~ icr.io ]]; then
+            echo "The image is not stored in the IBM Cloud Image Registry. Skipping Vulnerability Advisor validation"
+            exit 0
+          fi
+
+
+          echo -e "VA Security Scan image in registry"
+
+          echo "Registry URL: ${REGISTRY_SERVER}"
+
+          set +x
+          echo "ibmcloud login --apikey xxxx -g ${IBM_CLOUD_RESOURCE_GROUP} -r ${IBM_CLOUD_REGION}"
+          ibmcloud login --apikey ${IBM_CLOUD_APIKEY} -g ${IBM_CLOUD_RESOURCE_GROUP} -r ${IBM_CLOUD_REGION}
+          set -x
+          ibmcloud cr namespace-list
+
+          echo "Getting the VA status of ${IMAGE_URL}"
+
+          sleep 2m
+
+          ibmcloud cr va ${IMAGE_URL} --output json > va-result.json
+          VA_STATUS=$(cat va-result.json | jq -r '.[].status')
+
+          echo "VA scan status: ${VA_STATUS}"
+
+          if [[ "${VA_STATUS}" == "OK" ]]; then
+            echo "VA - No Issues in the image"
+            exit 0
+          elif [[ $(cat va-result.json | jq -r '.[].vulnerabilities | length') -gt 0 ]]; then
+            echo "VA Failure: $(cat va-result.json | jq -r '.[].vulnerabilities | length') vulnerabilities found in the image"
+            cat va-result.json | jq -r '.[].vulnerabilities'
+            exit 1
+          elif [[ $(cat va-result.json | jq -r '.[].configuration_issues | length') -gt 0 ]]; then
+            echo "VA Warning - $(cat va-result.json | jq -r '.[].configuration_issues | length') configuration issues found in the image"
+            cat va-result.json | jq -r '.[].configuration_issues'
+            exit 0
+          else
+            echo "VA Warning: non-OK status from Vulnerability Advisor ${VA_STATUS}"
+            cat va-result.json | jq -r '.[]'
+          fi
+
+

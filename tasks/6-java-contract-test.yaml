@@ -1,10 +1,10 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-golang-test
+  name: ibm-gradle-pact-verify
   annotations:
-    description: Executes build, test, and sonarscan logic for a Golang application
-    app.openshift.io/description: Executes build, test, and sonarscan logic for a Golang application
+    description: Performs pact verification on the service provider
+    app.openshift.io/description: Performs pact verification on the service provider
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
     app.openshift.io/vcs-ref: master
   labels:
@@ -16,12 +16,15 @@ spec:
       default: master
     - name: source-dir
       default: /source
-    - name: app-name
-      default: "my-golang-app"
-    - name: golang-image
-      default: golang:stretch
-    - name: sonarqube-cli
-      default: sonarsource/sonar-scanner-cli
+    - name: service-protocol
+      default: "http"
+    - name: service-host
+    - name: service-port
+      default: "80"
+    - name: gradle-image
+      default: gradle:jdk11
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.1.3
   volumes:
     - name: source
       emptyDir: {}
@@ -56,57 +59,53 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
-    - name: build
-      image: $(params.golang-image)
-      workingdir: $(params.source-dir)
-      script: |
-          go build ./...
-    - name: test
-      image: $(params.golang-image)
-      workingdir: $(params.source-dir)
-      script: |
-          go test ./...
-    - name: sonar-scan
-      image: $(params.sonarqube-cli)
+    - name: pact-verify
+      image: $(params.gradle-image)
       workingdir: $(params.source-dir)
       env:
-        - name: SONAR_USER_HOME
+        - name: GRADLE_USER_HOME
           value: $(params.source-dir)
-        - name: SONARQUBE_URL
+        - name: PACTBROKER_URL
           valueFrom:
             configMapKeyRef:
-              name: sonarqube-config
-              key: SONARQUBE_URL
+              name: pactbroker-config
+              key: PACTBROKER_URL
               optional: true
-        - name: SONARQUBE_USER
-          valueFrom:
-            secretKeyRef:
-              name: sonarqube-access
-              key: SONARQUBE_USER
-              optional: true
-        - name: SONARQUBE_PASSWORD
+        - name: PACTBROKER_USER
           valueFrom:
             secretKeyRef: 
-              name: sonarqube-access
-              key: SONARQUBE_PASSWORD
+              name: pactbroker-access
+              key: PACTBROKER_USER
+              optional: true
+        - name: PACTBROKER_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: pactbroker-access
+              key: PACTBROKER_PASSWORD
               optional: true
       script: |
-          APP_NAME=$(params.app-name)
+          #!/usr/bin/env bash
+          set -ex
 
-          if ! command -v sonar-scanner &> /dev/null
-          then
-              echo "Skipping SonarQube step, no task defined"
+          if [[ -z "${PACTBROKER_URL}" ]]; then
+            echo "PactBroker url not set. Skipping pact verification"
+            exit 0
+          fi
+
+          if ./gradlew tasks --all | grep -Eq "^pactVerify"; then
+              echo "Pact Verify task found"
+          else
+              echo "Skipping Pact Verify step, no task defined"
               exit 0
           fi
 
-          if [ -n "${SONARQUBE_URL}" ]; then
+          PROTOCOL=$(params.service-protocol)
+          HOST=$(params.service-host)
+          PORT=$(params.service-port)
 
-            sonar-scanner \
-            -Dsonar.login=${SONARQUBE_USER} \
-            -Dsonar.password=${SONARQUBE_PASSWORD} \
-            -Dsonar.host.url=${SONARQUBE_URL} \
-            -Dsonar.projectKey=${APP_NAME}
-
-          else
-              echo "Skipping Sonar Qube step for now but include"
-          fi
+          ./gradlew pactVerify \
+            -PpactBrokerUrl=${PACTBROKER_URL} \
+            -PpactProtocol=${PROTOCOL} \
+            -PpactHost=${HOST} \
+            -PpactPort=${PORT} \
+            -Ppact.verifier.publishResults=true

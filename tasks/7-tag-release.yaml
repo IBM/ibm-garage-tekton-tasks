@@ -1,0 +1,106 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-tag-release
+  annotations:
+    description: Tags the git repository with the next version release value
+    app.openshift.io/description: Tags the git repository with the next version release value
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: skip-push
+      default: ""
+    - name: js-image
+      default: docker.io/node:lts-stretch
+  results:
+    - name: tag
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
+        # Need to create  branch to make release-it work
+        git switch -c local
+    - name: git-tag
+      image: $(params.js-image)
+      workingdir: $(params.source-dir)
+      script: |
+        #!/usr/bin/env bash
+        set -ex
+
+        echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
+        git fetch --tags
+        git config --global user.email "cloud-native-toolkit@example.com"
+        git config --global user.name "Cloud Native Toolkit Pipeline"
+        if [[ $(git describe --tag `git rev-parse HEAD`) =~ (^[0-9]+.[0-9]+.[0-9]+$) ]]; then
+            echo "Latest commit is already tagged"
+            NEW_TAG="$(git describe --abbrev=0 --tags)"
+            echo -n "${NEW_TAG}" | tee $(results.tag.path)
+            exit 0
+        fi
+        mkdir -p ~/.npm
+        npm config set prefix ~/.npm
+        export PATH=$PATH:~/.npm/bin
+        npm i -g release-it
+
+        release-it patch \
+          --ci \
+          --no-npm \
+          --no-git.push \
+          --no-git.requireCleanWorkingDir \
+          --no-git.requireUpstream \
+          -VV
+        
+        if [[ -z "$(params.skip-push)" ]]; then
+          set +x
+          git push --tags -v
+          set -x
+        fi
+        
+        NEW_TAG="$(git describe --abbrev=0 --tags)"
+        if [[ -z "${NEW_TAG}" ]]; then
+            echo "Error: NEW_TAG not defined"
+            exit 1
+        fi
+        echo -n "${NEW_TAG}" | tee $(results.tag.path)

@@ -1,138 +1,81 @@
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: igc-build-tag-push
+  name: ibm-build-tag-push
+  annotations:
+    description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
+    app.openshift.io/description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
   labels:
     version: 0.0.0
 spec:
-  inputs:
-    resources:
-      - name: source
-        type: git
-    params:
-      - name: js-image
-        default: docker.io/node:12-stretch
-      - name: BUILDER_IMAGE
-        default: quay.io/buildah/stable:v1.11.0
-      - name: DOCKERFILE
-        default: ./Dockerfile
-      - name: CONTEXT
-        default: .
-      - name: TLSVERIFY
-        default: "false"
-  outputs:
-    resources:
-      - name: image
-        type: image
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: image-server
+      default: ""
+    - name: image-namespace
+      default: ""
+    - name: image-repository
+      default: ""
+    - name: image-tag
+      default: ""
+    - name: BUILDER_IMAGE
+      default: quay.io/buildah/stable:v1.15.0
+    - name: DOCKERFILE
+      default: ./Dockerfile
+    - name: CONTEXT
+      default: .
+    - name: TLSVERIFY
+      default: "false"
+    - name: FORMAT
+      default: "docker"
+    - name: STORAGE_DRIVER
+      description: Set buildah storage driver
+      default: overlay
   volumes:
     - name: varlibcontainers
       emptyDir: {}
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
   steps:
-    - name: tag-release
-      image: $(inputs.params.js-image)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
+    - name: git-clone
+      image: alpine/git
       env:
-        - name: BRANCH
-          value: "$(inputs.resources.source.revision)"
-        - name: GIT_AUTH_USER
+        - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef:
-              name: git-credentials
-              key: username
-              optional: true
-        - name: GIT_AUTH_PWD
-          valueFrom:
-            secretKeyRef:
+            secretKeyRef: 
               name: git-credentials
               key: password
               optional: true
-      args:
-        - -c
-        - |
-          set -e
-
-          if [[ -z "$GIT_AUTH_USER" ]] || [[ -z "$GIT_AUTH_PWD" ]]; then
-            echo "Git credentials not found. The pipeline expects to find them in a secret named 'git-credentials'."
-            echo "  Update your CLI and register the pipeline again"
-            exit 1
-          fi
-
-          echo "Current branch: $(git rev-parse --abbrev-ref HEAD)"
-          git fetch --unshallow
-          git fetch --tags
-          git tag -l
-
-          git checkout ${BRANCH}
-          git branch --set-upstream-to=origin/${BRANCH} ${BRANCH}
-
-          git config --global user.email "cloud-native-toolkit@example.com"
-          git config --global user.name "Cloud Native Toolkit Pipeline"
-
-          if [[ "${BRANCH}" == "master" ]] && [[ $(git describe --tag `git rev-parse HEAD`) =~ (^[0-9]+.[0-9]+.[0-9]+$) ]] || \
-             [[ $(git describe --tag `git rev-parse HEAD`) =~ (^[0-9]+.[0-9]+.[0-9]+-${BRANCH}[.][0-9]+$) ]]
-          then
-              echo "Latest commit is already tagged"
-              echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" > ./env-config
-              echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" >> ./env-config
-              exit 0
-          fi
-
-          mkdir -p ~/.npm
-          npm config set prefix ~/.npm
-          export PATH=$PATH:~/.npm/bin
-          npm i -g release-it
-
-          if [[ "${BRANCH}" != "master" ]]; then
-              PRE_RELEASE="--preRelease=${BRANCH}"
-          fi
-
-
-          release-it patch ${PRE_RELEASE} \
-            --ci \
-            --no-npm \
-            --no-git.push \
-            --no-git.requireCleanWorkingDir \
-            --verbose \
-            -VV
-
-          git push --follow-tags -v
-
-          echo "IMAGE_VERSION=$(git describe --abbrev=0 --tags)" > ./env-config
-          echo "IMAGE_NAME=$(basename -s .git `git config --get remote.origin.url` | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')" >> ./env-config
-
-          source ./env-config
-          if [[ -z "${IMAGE_VERSION}" ]]; then
-              echo "Error: IMAGE_VERSION not defined"
-              exit 1
-          fi
-          if [[ -z "${IMAGE_NAME}" ]]; then
-              echo "Error: IMAGE_NAME not defined"
-              exit 1
-          fi
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
     - name: build
-      image: $(inputs.params.BUILDER_IMAGE)
-      workingdir: $(inputs.resources.source.path)
-      command: ["/bin/bash"]
-      args:
-        - -c
-        - |
-          set -e
-
-          . ./env-config
-
-          IMAGE_URL=$(outputs.resources.image.url)
-
-          REGISTRY_URL=$(echo $IMAGE_URL | awk -F / '{print $1}')
-          REGISTRY_NAMESPACE=$(echo $IMAGE_URL | awk -F / '{print $2}')
-
-          APP_IMAGE="${REGISTRY_URL}/${REGISTRY_NAMESPACE}/${IMAGE_NAME}:${IMAGE_VERSION}"
-
-          buildah bud --tls-verify=$(inputs.params.TLSVERIFY) --format=docker -f $(inputs.params.DOCKERFILE) -t ${APP_IMAGE}  $(inputs.params.CONTEXT)
-          if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]]; then
-            buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "${REGISTRY_URL}"
-          fi
-          buildah push --tls-verify=$(inputs.params.TLSVERIFY) "${APP_IMAGE}" "docker://${APP_IMAGE}"
+      image: $(params.BUILDER_IMAGE)
+      workingdir: $(params.source-dir)
       env:
         - name: REGISTRY_USER
           valueFrom:
@@ -151,3 +94,14 @@ spec:
           name: varlibcontainers
       securityContext:
         privileged: true
+      script: |
+        APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
+        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
+        set +x
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
+          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
+          echo "buildah login -u "${REGISTRY_USER}" -p "xxxxx" "$(params.image-server)""
+        fi
+        set -x
+        buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+

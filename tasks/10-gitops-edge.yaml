@@ -1,0 +1,175 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-gitops-edge
+  annotations:
+    description: Registers the image with the Edge server using the hzn cli
+    app.openshift.io/description: Registers the image with the Edge server using the hzn cli
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: image-url
+      default: ""
+    - name: service-name
+      default: ""
+    - name: version
+      default: ""
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.1.3
+  volumes:
+    - name: source
+      emptyDir: {}
+    - name: icp-ca
+      secret:
+        secretName: edge-access
+        items:
+          - key: HZN_CERTIFICATE
+            path: icp-ca.crt
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef: 
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
+    - name: gitops-edge
+      image: $(params.tools-image)
+      workingdir: $(params.source-dir)
+      securityContext:
+        allowPrivilegeEscalation : true
+      env:
+        - name: HOME
+          value: /home/devops
+        - name: HZN_EXCHANGE_URL
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_EXCHANGE_URL
+              optional: true
+        - name: HZN_ORG_ID
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_ORG_ID
+              optional: true
+        - name: HZN_EXCHANGE_USER_AUTH
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_EXCHANGE_USER_AUTH
+              optional: true
+        - name: HZN_CERTIFICATE
+          valueFrom:
+            secretKeyRef: 
+              name: edge-access
+              key: HZN_CERTIFICATE
+              optional: true
+      volumeMounts:
+        - mountPath: /opt/certs
+          name: icp-ca
+      script: |
+          #!/usr/bin/env bash
+          set -ex
+
+          if [[ -z "${HZN_EXCHANGE_URL}" ]]; then
+            echo "Edge Exchange has not been configured. Skipping trigger step"
+            exit 0
+          fi
+
+          SERVICE_NAME="$(params.service-name)"
+          VERSION="$(params.version)"
+          REGISTRY_SERVER_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $1}')
+          REGISTRY_NAMESPACE_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $2}')
+          REGISTRY_REPOSITORY_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}')
+          REGISTRY_TAG_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}' | awk -F : '{print $2}')
+          BASE_IMAGE="${REGISTRY_SERVER_VALUE}/${REGISTRY_NAMESPACE_VALUE}"
+          
+          if [[ -z "${SERVICE_NAME}" ]]; then
+            # if service name not passed explicit assume to use image repository
+            SERVICE_NAME="${REGISTRY_REPOSITORY_VALUE}"
+          fi
+
+          if [[ -z "${VERSION}" ]]; then
+            # if version not passed explicit assume to use image tag
+            VERSION="${REGISTRY_TAG_VALUE}"
+          fi
+
+          if [[ -z "${SERVICE_NAME}" ]] || [[ -z "${VERSION}" ]] || [[ -z "${BASE_IMAGE}" ]] || [[ "${BASE_IMAGE}" = "/" ]]; then
+            echo "Edge Service, Version, or Base image parameters missing"
+            exit 1
+          fi
+          
+          if [[ -z "${HZN_EXCHANGE_USER_AUTH}" ]] || [[ -z "${HZN_CERTIFICATE}" ]]; then
+            echo "Edge Credentials or Certificate not set"
+            exit 1
+          fi
+
+          set +x
+          if [[ -z "${HZN_EXCHANGE_USER_AUTH}" ]] || [[ -z "${HZN_CERTIFICATE}" ]]; then
+            echo "Edge Credentials or Certificate not set"
+            exit 1
+          fi
+          set -x
+
+
+
+          hzn version
+
+          # Verify the Edge Cert is visible from the Tekton Task
+          ls /opt/certs/*.crt
+
+          cp /opt/certs/icp-ca.crt /usr/local/share/ca-certificates && update-ca-certificates
+
+          mkdir -p ./horizon
+          
+          cat <<JSON >./horizon/hzn.json
+          {
+            "HZN_ORG_ID": "${HZN_ORG_ID}",
+            "MetadataVars": {
+              "DOCKER_IMAGE_BASE": "${BASE_IMAGE}",
+              "SERVICE_NAME": "${SERVICE_NAME}",
+              "SERVICE_VERSION": "${VERSION}"
+            }
+          }
+          JSON
+
+          cat ./horizon/hzn.json
+
+          # Publish Service to Edge Application Manager
+          hzn key create "IBM" "user@us.ibm.com"
+
+          make publish-service
+
+          echo "Edge Service registered"

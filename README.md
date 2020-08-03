@@ -53,15 +53,15 @@ IMPORTANT: If Tekton version is lower than `0.7.0` then use the tasks from the `
     ```
 
 This step will create the following tasks:
-- igc-nodejs-tests
-- igc-java-gradle-tests
-- igc-build-push.yaml
-- igc-build-tag-push.yaml
-- igc-build-tag-push-ibm.yaml
-- igc-deploy
-- igc-health-check
-- igc-helm-package
-- igc-gitops
+- ibm-nodejs-tests
+- ibm-java-gradle-tests
+- ibm-build-push.yaml
+- ibm-build-tag-push.yaml
+- ibm-build-tag-push-ibm.yaml
+- ibm-deploy
+- ibm-health-check
+- ibm-helm-package
+- ibm-gitops
 
 ### Create Pipelines
 
@@ -73,8 +73,8 @@ This step will create the following tasks:
 
 This step will create following Pipelines:
 
-- igc-java-gradle
-- igc-nodejs
+- ibm-java-gradle
+- ibm-nodejs
 
 ### Manually run a Pipeline
 
@@ -105,10 +105,10 @@ This step will create following Pipelines:
     ```
     The script will output the name of the pipelinerun, and a command to follow the logs
     ```
-    Pipelinerun started: igc-nodejs-run-fqgr7
+    Pipelinerun started: ibm-nodejs-run-fqgr7
 
     In order to track the pipelinerun progress run:
-    tkn pipelinerun logs igc-nodejs-run-fqgr7 -f -n dev
+    tkn pipelinerun logs ibm-nodejs-run-fqgr7 -f -n dev
     ```
 
 ### Create Git Webhook
