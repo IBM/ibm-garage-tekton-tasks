@@ -68,8 +68,8 @@ spec:
           echo "Registry URL: ${REGISTRY_SERVER}"
 
           set +x
-          echo "ibmcloud login --apikey xxxx -g ${IBM_CLOUD_RESOURCE_GROUP} -r ${IBM_CLOUD_REGION}"
-          ibmcloud login --apikey ${IBM_CLOUD_APIKEY} -g ${IBM_CLOUD_RESOURCE_GROUP} -r ${IBM_CLOUD_REGION}
+          ibmcloud login --apikey ${IBM_CLOUD_APIKEY} -r ${IBM_CLOUD_REGION}
+          ibmcloud target -r ${IBM_CLOUD_REGION} 
           set -x
           ibmcloud cr namespace-list
 
