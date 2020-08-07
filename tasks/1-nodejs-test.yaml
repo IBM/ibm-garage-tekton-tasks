@@ -14,10 +14,14 @@ spec:
     - name: git-url
     - name: git-revision
       default: master
+    - name: app-name
+      default: ''
     - name: source-dir
       default: /source
     - name: js-image
       default: docker.io/node:lts-stretch
+    - name: sonarqube-cli
+      default: sonarsource/sonar-scanner-cli
   volumes:
     - name: source
       emptyDir: {}
@@ -101,7 +105,7 @@ spec:
             echo "Skipping Pact publish"
         fi
     - name: sonar-scan
-      image: $(params.js-image)
+      image: $(params.sonarqube-cli)
       workingdir: $(params.source-dir)
       env:
         - name: SONAR_USER_HOME
@@ -125,8 +129,22 @@ spec:
               key: SONARQUBE_PASSWORD
               optional: true
       script: |
+        APP_NAME=$(params.app-name)
+        
+        if ! command -v sonar-scanner &> /dev/null
+        then
+            echo "Skipping SonarQube step, no task defined"
+            exit 0
+        fi
+
         if [ -n "${SONARQUBE_URL}" ]; then
-            npm run sonarqube:scan --if-present
+
+           sonar-scanner \
+            -Dsonar.login=${SONARQUBE_USER} \
+            -Dsonar.password=${SONARQUBE_PASSWORD} \
+            -Dsonar.host.url=${SONARQUBE_URL} \
+            -Dsonar.projectKey=${APP_NAME}
+
         else 
             echo "Skipping Sonar Qube step"
         fi

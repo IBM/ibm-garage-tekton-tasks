@@ -47,6 +47,8 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: js-image
           value: "$(tasks.setup.results.js-image)"
+        - name: app-name
+          value: $(tasks.setup.results.app-name)
     - name: build
       taskRef:
         name: ibm-build-tag-push
