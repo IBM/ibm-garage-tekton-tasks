@@ -101,7 +101,7 @@ This step will create following Pipelines:
     ```
     For example to run the pipeline for the application template `nodejs-typescript`
     ```bash
-    ./test/scripts/run.sh nodesjs-typescript
+    ./test/scripts/run.sh nodejs-typescript
     ```
     The script will output the name of the pipelinerun, and a command to follow the logs
     ```
