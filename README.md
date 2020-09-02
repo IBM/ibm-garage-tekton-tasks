@@ -97,7 +97,7 @@ This step will create following Pipelines:
 - Run a pipeline for one of the application templates using the Tekton CLI `tkn` and the helper script
     
     ```bash
-    Usage: ./test/scripts/run.sh [nodesjs-typescript | nodejs-react | nodejs-angular | java-spring]
+    Usage: ./test/scripts/run.sh [nodejs-typescript | nodejs-react | nodejs-angular | java-spring]
     ```
     For example to run the pipeline for the application template `nodejs-typescript`
     ```bash
