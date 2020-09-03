@@ -18,7 +18,7 @@ elif [ "$1" == "java-spring" ]; then
   GIT="java-spring-git"
   IMAGE="java-spring-image"
 else 
-  echo "Usage: $0 [nodesjs-typescript | nodejs-react | nodejs-angular | java-spring]"
+  echo "Usage: $0 [nodejs-typescript | nodejs-react | nodejs-angular | java-spring]"
   exit 1
 fi
 
