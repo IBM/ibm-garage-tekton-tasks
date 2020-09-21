@@ -3,12 +3,12 @@ kind: Task
 metadata:
   name: ibm-img-scan-ibm
   annotations:
-    description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry
-    app.openshift.io/description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry
+    description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry. Also does the Vulnerability scanning with Trivy.
+    app.openshift.io/description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry. Also does the Vulnerability scanning with Trivy.
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
     app.openshift.io/vcs-ref: master
   labels:
-    version: 0.0.0 
+    version: 0.0.0
 spec:
   params:
     - name: image-url
@@ -22,7 +22,7 @@ spec:
     - name: source
       emptyDir: {}
   steps:
-    - name: scan-image
+    - name: scan-image-va
       image: $(params.tools-image)
       env:
         - name: HOME
@@ -48,7 +48,7 @@ spec:
       script: |
           #!/usr/bin/env bash
           set -ex
-          
+
           IMAGE_URL=$(params.image-url)
           REGISTRY_SERVER=$(echo $(params.image-url) | awk -F / '{print $1}')
           PERFORM_SCAN="$(params.scan-image)"
@@ -69,7 +69,7 @@ spec:
 
           set +x
           ibmcloud login --apikey ${IBM_CLOUD_APIKEY} -r ${IBM_CLOUD_REGION}
-          ibmcloud target -r ${IBM_CLOUD_REGION} 
+          ibmcloud target -r ${IBM_CLOUD_REGION}
           set -x
           ibmcloud cr namespace-list
 
@@ -98,4 +98,81 @@ spec:
             cat va-result.json | jq -r '.[]'
           fi
 
+    - name: scan-image-trivy
+      image: docker.io/aquasec/trivy
+      env:
+        - name: HOME
+          value: /home/devops
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              key: REGISTRY_USER
+              name: ibmcloud-apikey
+              optional: true
+        - name: IBM_CLOUD_APIKEY
+          valueFrom:
+            secretKeyRef:
+              key: APIKEY
+              name: ibmcloud-apikey
+              optional: true
+        - name: IBM_CLOUD_RESOURCE_GROUP
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: RESOURCE_GROUP
+              optional: true
+        - name: IBM_CLOUD_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: REGION
+              optional: true
+    - command:
+        - /bin/sh
+      args:
+        - '-c'
+        - >
+          set -e
 
+          IMAGE_URL=$(params.image-url)
+
+          REGISTRY_SERVER=$(echo $(params.image-url) | awk -F / '{print $1}')
+
+          PERFORM_SCAN="$(params.scan-image)"
+
+          if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+
+            echo "User selected to skip scanning. Skipping Trivy scan ."
+
+            exit 0
+
+          fi
+
+          echo -e "Trivy Security Scan image in registry"
+
+          echo "Registry URL: ${REGISTRY_SERVER}"
+
+          export TRIVY_AUTH_URL=${REGISTRY_SERVER}
+
+          export TRIVY_USERNAME=${REGISTRY_USER}
+
+          export TRIVY_PASSWORD=${IBM_CLOUD_APIKEY}
+
+
+          trivy image --exit-code 1 --severity CRITICAL ${IMAGE_URL}
+
+          my_exit_code=$?
+
+          echo "Scan exit code :--- $my_exit_code"
+
+          if [ ${my_exit_code} == 1 ]; then
+
+              echo "Trivy scanning completed. CRITICAL Vulnerabilities found.";
+
+              exit 1;
+
+          else
+
+            echo "Trivy scanning completed. CRITICAL vulnerabilities not found."
+
+          fi;
