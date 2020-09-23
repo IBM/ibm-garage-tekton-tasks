@@ -37,7 +37,7 @@ spec:
               name: ibmcloud-apikey
               key: APIKEY
               optional: true
-    - command:
+      command:
         - /bin/sh
       args:
         - '-c'
