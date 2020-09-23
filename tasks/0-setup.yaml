@@ -91,13 +91,13 @@ spec:
               fieldPath: metadata.namespace
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
@@ -137,7 +137,7 @@ spec:
         echo -n "$(params.js-image)">$(results.js-image.path)
         echo -n "$(params.scan-image)">$(results.scan-image.path)
 
-        
+
         REGISTRY_SERVER="$(params.image-server)"
         REGISTRY_NAMESPACE="$(params.image-namespace)"
         REGISTRY_REPOSITORY="$(params.image-repository)"
@@ -202,7 +202,7 @@ spec:
           echo -n "${REGISTRY_REPOSITORY}">$(results.app-name.path)
         fi
 
-      
+
         if [[ -n "$(params.image-release)" ]]; then
           REGISTRY_RELEASE_SERVER_VALUE=$(echo "$(params.image-release)" | awk -F / '{print $1}')
           if [[ -n "${REGISTRY_RELEASE_SERVER_VALUE}" ]]; then
@@ -227,7 +227,3 @@ spec:
         REGISTRY_RELEASE_URL="${REGISTRY_RELEASE_SERVER}/${REGISTRY_RELEASE_NAMESPACE}/${REGISTRY_REPOSITORY}"
         echo -n "${REGISTRY_RELEASE_URL}">$(results.image-release.path)
         for f in /tekton/results/*; do echo "results.$(basename $f)=$(cat $f)"; done
-
-
-
-
