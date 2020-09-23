@@ -67,11 +67,21 @@ spec:
           value: "$(tasks.setup.results.image-repository)"
         - name: image-tag
           value: "$(tasks.setup.results.image-tag)"
+    - name: trivy-scan
+      taskRef:
+        name: ibm-img-scan-trivy
+      runAfter:
+        - build
+      params:
+        - name: image-url
+          value: $(tasks.setup.results.image-url)
+        - name: scan-image
+          value: $(params.scan-image)
     - name: deploy
       taskRef:
         name: ibm-deploy
       runAfter:
-        - build
+        - trivy-scan
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
@@ -155,7 +165,7 @@ spec:
           value: "$(tasks.setup.results.image-url)"
         - name: image-to
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
-    - name: scan-ibm
+    - name: scan
       taskRef:
         name: ibm-img-scan-ibm
       runAfter:
@@ -165,22 +175,11 @@ spec:
           value: $(tasks.img-release.results.image-url)
         - name: scan-image
           value: $(params.scan-image)
-    - name: scan-trivy
-      taskRef:
-        name: ibm-img-scan-trivy
-      runAfter:
-        - scan-ibm
-      params:
-        - name: image-url
-          value: $(tasks.img-release.results.image-url)
-        - name: scan-image
-          value: $(params.scan-image)
     - name: helm-release
       taskRef:
         name: ibm-helm-release
       runAfter:
-        - scan-ibm
-        - scan-trivy
+        - scan
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
