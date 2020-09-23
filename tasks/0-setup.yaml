@@ -52,8 +52,10 @@ spec:
     - name: scan-image
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
-    - name: tools-image
+    - name: tools-image-ibm
       default: garagecatalyst/ibmcloud-dev:1.1.3
+    - name: tools-image-trivy
+      default: docker.io/aquasec/trivy
     - name: js-image
       default: docker.io/node:lts-stretch
   results:
@@ -71,7 +73,8 @@ spec:
     - name: deploy-ingress-type
     - name: health-protocol
     - name: health-endpoint
-    - name: tools-image
+    - name: tools-image-ibm
+    - name: tools-image-trivy
     - name: js-image
     - name: scan-image
   volumes:
@@ -91,13 +94,13 @@ spec:
               fieldPath: metadata.namespace
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
@@ -133,11 +136,12 @@ spec:
         echo -n "$(params.deploy-ingress-type)">$(results.deploy-ingress-type.path)
         echo -n "$(params.health-protocol)">$(results.health-protocol.path)
         echo -n "$(params.health-endpoint)">$(results.health-endpoint.path)
-        echo -n "$(params.tools-image)">$(results.tools-image.path)
+        echo -n "$(params.tools-image-ibm)">$(results.tools-image-ibm.path)
+        echo -n "$(params.tools-image-trivy)">$(results.tools-image-trivy.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
         echo -n "$(params.scan-image)">$(results.scan-image.path)
 
-        
+
         REGISTRY_SERVER="$(params.image-server)"
         REGISTRY_NAMESPACE="$(params.image-namespace)"
         REGISTRY_REPOSITORY="$(params.image-repository)"
@@ -202,7 +206,7 @@ spec:
           echo -n "${REGISTRY_REPOSITORY}">$(results.app-name.path)
         fi
 
-      
+
         if [[ -n "$(params.image-release)" ]]; then
           REGISTRY_RELEASE_SERVER_VALUE=$(echo "$(params.image-release)" | awk -F / '{print $1}')
           if [[ -n "${REGISTRY_RELEASE_SERVER_VALUE}" ]]; then
@@ -227,7 +231,3 @@ spec:
         REGISTRY_RELEASE_URL="${REGISTRY_RELEASE_SERVER}/${REGISTRY_RELEASE_NAMESPACE}/${REGISTRY_REPOSITORY}"
         echo -n "${REGISTRY_RELEASE_URL}">$(results.image-release.path)
         for f in /tekton/results/*; do echo "results.$(basename $f)=$(cat $f)"; done
-
-
-
-

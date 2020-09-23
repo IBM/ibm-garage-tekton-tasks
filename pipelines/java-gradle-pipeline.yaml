@@ -155,7 +155,7 @@ spec:
           value: "$(tasks.setup.results.image-url)"
         - name: image-to
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
-    - name: scan
+    - name: scan-ibm
       taskRef:
         name: ibm-img-scan-ibm
       runAfter:
@@ -165,11 +165,22 @@ spec:
           value: $(tasks.img-release.results.image-url)
         - name: scan-image
           value: $(params.scan-image)
+    - name: scan-trivy
+      taskRef:
+        name: ibm-img-scan-trivy
+      runAfter:
+        - scan-ibm
+      params:
+        - name: image-url
+          value: $(tasks.img-release.results.image-url)
+        - name: scan-image
+          value: $(params.scan-image)
     - name: helm-release
       taskRef:
         name: ibm-helm-release
       runAfter:
-        - scan
+        - scan-ibm
+        - scan-trivy
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"

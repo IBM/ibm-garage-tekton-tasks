@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-img-scan-trivy
+  annotations:
+    description: Detects comprehensive vulnerabilities in the container image using Trivy.
+    app.openshift.io/description: Detects comprehensive vulnerabilities in the container image using Trivy.
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: image-url
+      description: "The location of image to scan on IBM Container Registry <server>/<namespace>/<repository>:<tag>"
+    - name: scan-image
+      description: Flag indicating that a scan should be performed
+      default: "false"
+    - name: tools-image
+      default: docker.io/aquasec/trivy
+  volumes:
+    - name: source
+      emptyDir: {}
+  steps:
+    - name: scan-image-trivy
+      image: $(params.tools-image)
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: ibmcloud-apikey
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ibmcloud-apikey
+              key: APIKEY
+              optional: true
+    - command:
+        - /bin/sh
+      args:
+        - '-c'
+        - >
+          set -e
+
+          IMAGE_URL=$(params.image-url)
+
+          REGISTRY_SERVER=$(echo $(params.image-url) | awk -F / '{print $1}')
+
+          PERFORM_SCAN="$(params.scan-image)"
+
+          if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+
+            echo "User selected to skip scanning. Skipping Trivy scan ."
+
+            exit 0
+
+          fi
+
+          echo -e "Trivy Security Scan image in registry"
+
+          echo "Registry URL: ${REGISTRY_SERVER}"
+
+          export TRIVY_AUTH_URL=${REGISTRY_SERVER}
+
+          export TRIVY_USERNAME=${REGISTRY_USER}
+
+          export TRIVY_PASSWORD=${REGISTRY_PASSWORD}
+
+
+          trivy image --exit-code 1 --severity CRITICAL ${IMAGE_URL}
+
+          my_exit_code=$?
+
+          echo "Scan exit code :--- $my_exit_code"
+
+          if [ ${my_exit_code} == 1 ]; then
+
+              echo "Failed : Trivy scanning completed. CRITICAL Vulnerabilities found.";
+
+              exit 1;
+
+          else
+
+            echo "Success : Trivy scanning completed. CRITICAL vulnerabilities not found."
+
+          fi;
