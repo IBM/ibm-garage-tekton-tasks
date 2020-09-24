@@ -73,6 +73,19 @@ spec:
       volumeMounts:
         - mountPath: /var/oci
           name: oci-image
+      env:
+        - name: TRIVY_SERVER
+          valueFrom:
+            secretKeyRef:
+              name: trivy-access
+              key: TRIVY_URL
+              optional: true
+        - name: TRIVY_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: trivy-access
+              key: TRIVY_TOKEN
+              optional: true
       script: |
           set -e
           PERFORM_SCAN="$(params.scan-image)"
@@ -81,9 +94,21 @@ spec:
             exit 0
           fi
           PATH_TO_IMAGE="/var/oci/image"
+
           echo -e "Trivy Security Scan image in registry"
-          trivy image --exit-code 0 --input ${PATH_TO_IMAGE}
-          trivy image --exit-code 1 --severity CRITICAL --input ${PATH_TO_IMAGE}
+
+          if [[ -n "${TRIVY_SERVER}" ]]; then
+            if [[ -n "${TRIVY_TOKEN" ]]; then
+              TOKEN="--token ${TRIVY_TOKEN}"
+            fi
+
+            trivy client --exit-code 0 ${TOKEN} --input ${PATH_TO_IMAGE}
+            trivy client --exit-code 1 ${TOKEN} --severity CRITICAL  --input ${PATH_TO_IMAGE}
+          else
+            trivy image  --exit-code 0 --input ${PATH_TO_IMAGE}
+            trivy image  --exit-code 1 --severity CRITICAL --input ${PATH_TO_IMAGE}
+          fi
+
           my_exit_code=$?
           echo "Scan exit code :--- $my_exit_code"
           if [ ${my_exit_code} == 1 ]; then
