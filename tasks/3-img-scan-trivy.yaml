@@ -75,6 +75,11 @@ spec:
           name: oci-image
       script: |
           set -e
+          PERFORM_SCAN="$(params.scan-image)"
+          if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+            echo "User selected to skip scanning. Skipping Trivy scan."
+            exit 0
+          fi
           PATH_TO_IMAGE="/var/oci/image"
           echo -e "Trivy Security Scan image in registry"
           trivy image --exit-code 0 --input ${PATH_TO_IMAGE}
