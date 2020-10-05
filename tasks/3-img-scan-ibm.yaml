@@ -18,12 +18,19 @@ spec:
       default: "false"
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
+    - name: source-dir
+      default: /source
   volumes:
     - name: source
       emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
   steps:
     - name: scan-image
       image: $(params.tools-image)
+      workingdir: $(params.source-dir)
       env:
         - name: HOME
           value: /home/devops
@@ -75,8 +82,18 @@ spec:
 
           echo "Getting the VA status of ${IMAGE_URL}"
 
-          sleep 2m
-
+          set +e
+          ibmcloud cr va ${IMAGE_URL} --output json | grep -i "Try again later"
+          retry=$?
+          while [ $retry -eq 0 ]; do
+            sleep 30
+            echo "Trying again to see if scan is done"
+            ibmcloud cr va ${IMAGE_URL} --output json | grep -i "Try again later"
+            retry=$?
+          done
+          set -e
+          ibmcloud cr va ${IMAGE_URL} --output json
+          echo "Saving results to va-result.json"
           ibmcloud cr va ${IMAGE_URL} --output json > va-result.json
           VA_STATUS=$(cat va-result.json | jq -r '.[].status')
 
