@@ -25,7 +25,7 @@ jobs:
           config-name: release-drafter.yaml
           publish: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
       - name: Build Asset
         run: ./bin/package-yaml.sh ${{ steps.create-release.outputs.tag_name }}
