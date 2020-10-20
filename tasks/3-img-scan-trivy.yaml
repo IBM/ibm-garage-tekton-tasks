@@ -98,7 +98,7 @@ spec:
           echo -e "Trivy Security Scan image in registry"
 
           if [[ -n "${TRIVY_SERVER}" ]]; then
-            if [[ -n "${TRIVY_TOKEN" ]]; then
+            if [[ -n "${TRIVY_TOKEN}" ]]; then
               TOKEN="--token ${TRIVY_TOKEN}"
             fi
 
