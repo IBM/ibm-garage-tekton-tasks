@@ -35,13 +35,13 @@ spec:
       env:
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
@@ -59,6 +59,13 @@ spec:
     - name: build
       image: $(params.js-image)
       workingdir: $(params.source-dir)
+      env:
+      - name: npm_config_registry
+        valueFrom:
+          secretKeyRef:
+            name: npm-config
+            key: npm_config_registry
+            optional: true
       script: |
         npm install
         if [ -d client ]; then
@@ -85,7 +92,7 @@ spec:
       script: |
         if [ -n "${PACTBROKER_URL}" ]; then
             npm run pact:publish --if-present
-        else 
+        else
             echo "Skipping Pact publish"
         fi
     - name: verify-pact
@@ -101,7 +108,7 @@ spec:
       script: |
         if [ -n "${PACTBROKER_URL}" ]; then
             npm run pact:verify --if-present
-        else 
+        else
             echo "Skipping Pact publish"
         fi
     - name: sonar-scan
@@ -124,13 +131,13 @@ spec:
               optional: true
         - name: SONARQUBE_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: sonarqube-access
               key: SONARQUBE_PASSWORD
               optional: true
       script: |
         APP_NAME=$(params.app-name)
-        
+
         if ! command -v sonar-scanner &> /dev/null
         then
             echo "Skipping SonarQube step, no task defined"
@@ -145,7 +152,7 @@ spec:
             -Dsonar.host.url=${SONARQUBE_URL} \
             -Dsonar.projectKey=${APP_NAME}
 
-        else 
+        else
             echo "Skipping Sonar Qube step"
         fi
 
