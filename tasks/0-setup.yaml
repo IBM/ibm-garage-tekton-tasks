@@ -103,14 +103,14 @@ spec:
               optional: true
         - name: REGISTRY_RELEASE_SERVER
           valueFrom:
-            configMapKeyRef:
-              name: ibmcloud-config
+            secretKeyRef:
+              name: registry-access
               key: REGISTRY_URL
               optional: true
         - name: REGISTRY_RELEASE_NAMESPACE
           valueFrom:
-            configMapKeyRef:
-              name: ibmcloud-config
+            secretKeyRef:
+              name: registry-access
               key: REGISTRY_NAMESPACE
               optional: true
       script: |
