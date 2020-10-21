@@ -121,6 +121,8 @@ spec:
           value: "$(tasks.setup.results.health-protocol)"
         - name: health-endpoint
           value: "$(tasks.setup.results.health-endpoint)"
+        - name: health-url
+          value: "$(tasks.setup.results.health-url)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
     - name: tag-release

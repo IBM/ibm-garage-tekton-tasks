@@ -21,6 +21,8 @@ spec:
       default: "https"
     - name: health-endpoint
       default: "/health"
+    - name: health-url
+      default: ""
     - name: tools-image
       default: garagecatalyst/ibmcloud-dev:1.1.3
   steps:
@@ -29,26 +31,32 @@ spec:
       script: |
           #!/usr/bin/env bash
           set -x
-          
-          APP_NAMESPACE="$(params.app-namespace)"
-          APP_NAME="$(params.app-name)"
-          PROTOCOL="$(params.health-protocol)"
-          INGRESS_TYPE="$(params.deploy-ingress-type)"
-          HEALTH_ENDPOINT="$(params.health-endpoint)"
 
-          if [[ "${INGRESS_TYPE}" == "route" ]]; then
-              HOST=$(kubectl get route/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.host }')
-              if [[ -z "${PROTOCOL}" ]]; then
-                PROTOCOL="https"
-              fi
-          else
-              HOST=$(kubectl get ingress/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.rules[0].host }')
-              if [[ -z "${PROTOCOL}" ]]; then
-                PROTOCOL="http"
-              fi
+          URL="$(params.health-url)"
+
+          if [[ -z "${URL}" ]]; then
+            APP_NAMESPACE="$(params.app-namespace)"
+            APP_NAME="$(params.app-name)"
+            PROTOCOL="$(params.health-protocol)"
+            INGRESS_TYPE="$(params.deploy-ingress-type)"
+            HEALTH_ENDPOINT="$(params.health-endpoint)"
+
+            if [[ "${INGRESS_TYPE}" == "route" ]]; then
+                HOST=$(kubectl get route/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.host }')
+                if [[ -z "${PROTOCOL}" ]]; then
+                  PROTOCOL="https"
+                fi
+            else
+                HOST=$(kubectl get ingress/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.rules[0].host }')
+                if [[ -z "${PROTOCOL}" ]]; then
+                  PROTOCOL="http"
+                fi
+            fi
+
+            URL="${PROTOCOL}://${HOST}${HEALTH_ENDPOINT}"
+
           fi
 
-          URL="${PROTOCOL}://${HOST}${HEALTH_ENDPOINT}"
           sleep_countdown=5
           # sleep for 10 seconds to allow enough time for the server to start
           sleep 10

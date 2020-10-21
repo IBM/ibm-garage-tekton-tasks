@@ -49,6 +49,9 @@ spec:
     - name: health-endpoint
       description: Endpoint to check health after deployment, liberty uses / not /health
       default: "/health"
+    - name: health-url
+      description: Override for health check url
+      default: ""
     - name: scan-image
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
@@ -71,6 +74,7 @@ spec:
     - name: deploy-ingress-type
     - name: health-protocol
     - name: health-endpoint
+    - name: health-url
     - name: tools-image
     - name: js-image
     - name: scan-image
@@ -133,6 +137,7 @@ spec:
         echo -n "$(params.deploy-ingress-type)">$(results.deploy-ingress-type.path)
         echo -n "$(params.health-protocol)">$(results.health-protocol.path)
         echo -n "$(params.health-endpoint)">$(results.health-endpoint.path)
+        echo -n "$(params.health-url)">$(results.health-endpoint.url)
         echo -n "$(params.tools-image)">$(results.tools-image.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
         echo -n "$(params.scan-image)">$(results.scan-image.path)
