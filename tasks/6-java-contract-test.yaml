@@ -38,13 +38,13 @@ spec:
       env:
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
@@ -67,19 +67,19 @@ spec:
           value: $(params.source-dir)
         - name: PACTBROKER_URL
           valueFrom:
-            configMapKeyRef:
-              name: pactbroker-config
+            secretKeyRef:
+              name: pactbroker-access
               key: PACTBROKER_URL
               optional: true
         - name: PACTBROKER_USER
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: pactbroker-access
               key: PACTBROKER_USER
               optional: true
         - name: PACTBROKER_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: pactbroker-access
               key: PACTBROKER_PASSWORD
               optional: true

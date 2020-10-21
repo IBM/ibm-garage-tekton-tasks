@@ -78,8 +78,8 @@ spec:
       env:
         - name: PACTBROKER_URL
           valueFrom:
-            configMapKeyRef:
-              name: pactbroker-config
+            secretKeyRef:
+              name: pactbroker-access
               key: PACTBROKER_URL
               optional: true
       script: |
@@ -94,8 +94,8 @@ spec:
       env:
         - name: PACTBROKER_URL
           valueFrom:
-            configMapKeyRef:
-              name: pactbroker-config
+            secretKeyRef:
+              name: pactbroker-access
               key: PACTBROKER_URL
               optional: true
       script: |
