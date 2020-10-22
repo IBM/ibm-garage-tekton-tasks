@@ -123,6 +123,8 @@ spec:
           value: "$(tasks.setup.results.health-endpoint)"
         - name: health-url
           value: "$(tasks.setup.results.health-url)"
+        - name: health-curl
+          value: "$(tasks.setup.results.health-curl)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
     - name: pact-verify
