@@ -56,7 +56,7 @@ spec:
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
     - name: tools-image
-      default: garagecatalyst/ibmcloud-dev:1.1.3
+      default: ibmgaragecloud/ibmcloud-dev:1.2.2
     - name: js-image
       default: docker.io/node:lts-stretch
   results:

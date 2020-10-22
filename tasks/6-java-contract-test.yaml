@@ -23,8 +23,6 @@ spec:
       default: "80"
     - name: gradle-image
       default: gradle:jdk11
-    - name: tools-image
-      default: garagecatalyst/ibmcloud-dev:1.1.3
   volumes:
     - name: source
       emptyDir: {}

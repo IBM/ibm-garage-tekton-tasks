@@ -23,7 +23,7 @@ spec:
     - name: deploy-ingress-type
       default: "route"
     - name: tools-image
-      default: garagecatalyst/ibmcloud-dev:1.1.3
+      default: ibmgaragecloud/ibmcloud-dev:1.2.2
   results:
     - name: helm-url
       description: The url of the helm repository
@@ -40,13 +40,13 @@ spec:
       env:
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
@@ -85,19 +85,19 @@ spec:
               optional: true
         - name: ARTIFACTORY_ENCRYPT
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: artifactory-access
               key: ARTIFACTORY_ENCRYPT
               optional: true
         - name: ARTIFACTORY_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: artifactory-access
               key: ARTIFACTORY_PASSWORD
               optional: true
         - name: ARTIFACTORY_USER
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: artifactory-access
               key: ARTIFACTORY_USER
               optional: true
@@ -115,7 +115,7 @@ spec:
           IMAGE_REPOSITORY="$(echo "$(params.image-url)" | awk -F / '{print $3}' | awk -F : '{print $1}')"
           IMAGE_VERSION="$(echo "$(params.image-url)" | awk -F / '{print $3}' | awk -F : '{print $2}')"
           IMAGE_URL="${IMAGE_SERVER}/${IMAGE_NAMESPACE}/${IMAGE_REPOSITORY}"
-          
+
           APP_NAME="$(params.app-name)"
           if [[ -z "${APP_NAME}" ]]; then
             APP_NAME="${IMAGE_REPOSITORY}"
@@ -160,9 +160,7 @@ spec:
           RELEASE_NAME="${APP_NAME}"
           echo "RELEASE_NAME: $RELEASE_NAME"
 
-          echo "INITIALIZING helm with client-only (no Tiller)"
-          helm init --client-only 1> /dev/null 2> /dev/null
-          echo $(helm version --client)
+          echo $(helm version)
 
           # Update helm chart with repository and tag values
           cat ${CHART_PATH}/values.yaml | \
@@ -259,4 +257,4 @@ spec:
 
           echo -n "${HELM_URL}/${IMAGE_NAMESPACE}" | tee $(results.helm-url.path)
 
-          
+
