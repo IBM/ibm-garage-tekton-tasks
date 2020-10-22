@@ -137,7 +137,7 @@ spec:
         echo -n "$(params.deploy-ingress-type)">$(results.deploy-ingress-type.path)
         echo -n "$(params.health-protocol)">$(results.health-protocol.path)
         echo -n "$(params.health-endpoint)">$(results.health-endpoint.path)
-        echo -n "$(params.health-url)">$(results.health-endpoint.url)
+        echo -n "$(params.health-url)">$(results.health-url.path)
         echo -n "$(params.tools-image)">$(results.tools-image.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
         echo -n "$(params.scan-image)">$(results.scan-image.path)
