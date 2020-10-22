@@ -59,6 +59,13 @@ spec:
     - name: build
       image: $(params.js-image)
       workingdir: $(params.source-dir)
+      env:
+      - name: npm_config_registry
+        valueFrom:
+          secretKeyRef:
+            name: npm-config
+            key: npm_config_registry
+            optional: true
       script: |
         npm install
         if [ -d client ]; then
