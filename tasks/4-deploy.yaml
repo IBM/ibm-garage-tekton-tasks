@@ -31,7 +31,7 @@ spec:
     - name: deploy-ingress-type
       default: "route"
     - name: tools-image
-      default: garagecatalyst/ibmcloud-dev:1.1.3
+      default: ibmgaragecloud/ibmcloud-dev:1.2.2
   results:
     - name: service-port
   volumes:
@@ -47,13 +47,13 @@ spec:
       env:
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
@@ -134,9 +134,7 @@ spec:
           RELEASE_NAME="${APP_NAME}"
           echo "RELEASE_NAME: $RELEASE_NAME"
 
-          echo "INITIALIZING helm with client-only (no Tiller)"
-          helm init --client-only 1> /dev/null 2> /dev/null
-          echo $(helm version --client)
+          echo $(helm version)
 
           echo "CHECKING CHART (lint)"
           helm lint ${CHART_PATH}
@@ -156,8 +154,7 @@ spec:
           cat ${CHART_PATH}/values.yaml
 
           # Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
-          helm template ${CHART_PATH} \
-              --name ${RELEASE_NAME} \
+          helm template ${RELEASE_NAME} ${CHART_PATH} \
               --namespace ${APP_NAMESPACE} \
               --set ingress.tlsSecretName="${TLS_SECRET_NAME}" \
               --set ingress.subdomain="${INGRESS_SUBDOMAIN}" > ./release.yaml
@@ -181,4 +178,4 @@ spec:
           done
           SERVICE_PORT=$(kubectl get svc "${APP_NAME}" -n "${APP_NAMESPACE}" -o jsonpath="{.spec.ports[?(@.name == 'http')].port}")
           echo -n "${SERVICE_PORT}" | tee $(results.service-port.path)
-          
+
