@@ -54,7 +54,7 @@ spec:
       default: ""
     - name: health-curl
       description: Override for health check curl flags
-      default: ""
+      default: "-k"
     - name: scan-image
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
