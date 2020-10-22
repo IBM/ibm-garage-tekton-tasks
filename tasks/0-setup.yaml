@@ -52,6 +52,9 @@ spec:
     - name: health-url
       description: Override for health check url
       default: ""
+    - name: health-curl
+      description: Override for health check curl flags
+      default: "-k"
     - name: scan-image
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
@@ -75,6 +78,7 @@ spec:
     - name: health-protocol
     - name: health-endpoint
     - name: health-url
+    - name: health-curl
     - name: tools-image
     - name: js-image
     - name: scan-image
@@ -138,6 +142,7 @@ spec:
         echo -n "$(params.health-protocol)">$(results.health-protocol.path)
         echo -n "$(params.health-endpoint)">$(results.health-endpoint.path)
         echo -n "$(params.health-url)">$(results.health-url.path)
+        echo -n "$(params.health-curl)">$(results.health-curl.path)
         echo -n "$(params.tools-image)">$(results.tools-image.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
         echo -n "$(params.scan-image)">$(results.scan-image.path)

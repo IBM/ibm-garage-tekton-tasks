@@ -23,6 +23,8 @@ spec:
       default: "/health"
     - name: health-url
       default: ""
+    - name: health-curl
+      default: "-k"
     - name: tools-image
       default: ibmgaragecloud/ibmcloud-dev:1.2.2
   steps:
@@ -33,6 +35,7 @@ spec:
           set -x
 
           URL="$(params.health-url)"
+          CURL_FLAGS="$(params.health-curl)"
 
           if [[ -z "${URL}" ]]; then
             APP_NAMESPACE="$(params.app-namespace)"
@@ -61,7 +64,7 @@ spec:
           # sleep for 10 seconds to allow enough time for the server to start
           sleep 10
           echo "Health check start"
-          while [[ $(curl -sL -w "%{http_code}\\n" "${URL}" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) != "200" ]]; do
+          while [[ $(curl ${CURL_FLAGS} -sL -w "%{http_code}\\n" "${URL}" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) != "200" ]]; do
               sleep 30
               echo "Health check failure. Remaining retries: $sleep_countdown"
               sleep_countdown=$((sleep_countdown-1))
