@@ -23,7 +23,7 @@ spec:
     - name: deploy-ingress-type
       default: "route"
     - name: helm-curl
-      default: "-k"
+      default: ""
     - name: tools-image
       default: ibmgaragecloud/ibmcloud-dev:1.2.2
   results:
@@ -248,8 +248,8 @@ spec:
 
           # Get the index and re index it with current Helm Chart
           set +x
-          echo "curl -u${HELM_USER}:xxxx -O ${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
-          curl -u${HELM_USER}:${HELM_PASSWORD} -O "${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
+          echo "curl ${CURL_FLAGS} -u${HELM_USER}:xxxx -O ${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
+          curl ${CURL_FLAGS} -u${HELM_USER}:${HELM_PASSWORD} -O "${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
           set -x
 
           apiVersion=$(grep apiVersion ./index.yaml | sed -E "s/apiVersion: (.*)/\1/g")
@@ -266,12 +266,12 @@ spec:
 
           # Persist the Helm Chart in Helm repo for us by ArgoCD
           set +x
-          echo "curl -u${HELM_USER}:xxxx -s -T ${CHART_NAME}-${IMAGE_VERSION}.tgz ${HELM_URL}/${IMAGE_NAMESPACE}/${CHART_NAME}-${IMAGE_VERSION}.tgz"
-          curl -u${HELM_USER}:${HELM_PASSWORD} -s -T ${CHART_NAME}-${IMAGE_VERSION}.tgz "${HELM_URL}/${IMAGE_NAMESPACE}/${CHART_NAME}-${IMAGE_VERSION}.tgz"
+          echo "curl ${CURL_FLAGS} -u${HELM_USER}:xxxx -s -T ${CHART_NAME}-${IMAGE_VERSION}.tgz ${HELM_URL}/${IMAGE_NAMESPACE}/${CHART_NAME}-${IMAGE_VERSION}.tgz"
+          curl ${CURL_FLAGS} -u${HELM_USER}:${HELM_PASSWORD} -s -T ${CHART_NAME}-${IMAGE_VERSION}.tgz "${HELM_URL}/${IMAGE_NAMESPACE}/${CHART_NAME}-${IMAGE_VERSION}.tgz"
 
           # Persist the Helm Index in the helm repo for us by ArgoCD
-          echo "curl -u${HELM_USER}:xxxx -s -T index.yaml ${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
-          curl -u${HELM_USER}:${HELM_PASSWORD} -s -T index.yaml "${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
+          echo "curl ${CURL_FLAGS} -u${HELM_USER}:xxxx -s -T index.yaml ${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
+          curl ${CURL_FLAGS} -u${HELM_USER}:${HELM_PASSWORD} -s -T index.yaml "${HELM_URL}/${IMAGE_NAMESPACE}/index.yaml"
 
           echo -n "${HELM_URL}/${IMAGE_NAMESPACE}" | tee $(results.helm-url.path)
 
