@@ -22,6 +22,8 @@ spec:
       default: ""
     - name: deploy-ingress-type
       default: "route"
+    - name: helm-curl
+      default: "-k"
     - name: tools-image
       default: ibmgaragecloud/ibmcloud-dev:1.2.2
   results:
@@ -79,21 +81,9 @@ spec:
               optional: true
         - name: ARTIFACTORY_URL
           valueFrom:
-            configMapKeyRef:
-              name: artifactory-config
+            secretKeyRef:
+              name: artifactory-access
               key: ARTIFACTORY_URL
-              optional: true
-        - name: ARTIFACTORY_ENCRYPT
-          valueFrom:
-            secretKeyRef:
-              name: artifactory-access
-              key: ARTIFACTORY_ENCRYPT
-              optional: true
-        - name: ARTIFACTORY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: artifactory-access
-              key: ARTIFACTORY_PASSWORD
               optional: true
         - name: ARTIFACTORY_USER
           valueFrom:
@@ -101,9 +91,41 @@ spec:
               name: artifactory-access
               key: ARTIFACTORY_USER
               optional: true
+        - name: ARTIFACTORY_ENCRYPT
+          valueFrom:
+            secretKeyRef:
+              name: artifactory-access
+              key: ARTIFACTORY_ENCRYPT
+              optional: true
+        - name: ARTIFACTORY_REPOSITORY_KEY
+          valueFrom:
+            secretKeyRef:
+              name: artifactory-access
+              key: ARTIFACTORY_REPOSITORY_KEY
+              optional: true
+        - name: HELM_URL
+          valueFrom:
+            secretKeyRef:
+              name: helm-access
+              key: HELM_URL
+              optional: true
+        - name: HELM_USER
+          valueFrom:
+            secretKeyRef:
+              name: helm-access
+              key: HELM_USER
+              optional: true
+        - name: HELM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: helm-access
+              key: HELM_PASSWORD
+              optional: true
       script: |
           #!/usr/bin/env bash
           set -ex
+
+          CURL_FLAGS="$(params.helm-curl)"
 
           echo "1. Package Helm Chart"
 
@@ -183,12 +205,12 @@ spec:
 
           if [[ -z "${HELM_URL}" ]] && [[ -z "${HELM_USER}" ]]; then
             if [[ -z "${ARTIFACTORY_URL}" ]]; then
-              echo "It looks like Artifactory has not been installed (ARTIFACTORY_URL from artifactory-config config map is missing). Skipping step."
+              echo "It looks like Artifactory has not been installed (ARTIFACTORY_URL from artifactory-acess secret is missing). Skipping step."
               exit 0
             fi
 
             set +x
-            if [[ -z "${ARTIFACTORY_USER}" ]] || [[ -z "${ARTIFACTORY_PASSWORD}" ]]; then
+            if [[ -z "${ARTIFACTORY_USER}" ]]; then
               echo "Something's wrong... The Artifactory url is configured but the Artifactory credentials cannot be found. Check your artifactory-access secret."
               exit 1
             fi
@@ -198,23 +220,19 @@ spec:
                 exit 1
             fi
 
-            echo "Check if a Generic Local Repo has been created and retrieve the URL for it on ${ARTIFACTORY_URL}/artifactory/api/repositories?type=LOCAL"
-            export URL=$(curl -s -u${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -X GET "${ARTIFACTORY_URL}/artifactory/api/repositories?type=LOCAL" | jq -r '.[0].url')
-            echo "Helm repo url: ${URL}"
-
-            # Check if the URL is valid and we can continue
+            HELM_USER="${ARTIFACTORY_USER}"
+            set +x
+            HELM_PASSWORD="${ARTIFACTORY_ENCRYPT}"
             set -x
-            if [ -n "${URL}" ]; then
-                echo "Successfully read Repo ${URL}"
-                HELM_URL=${URL}
-                HELM_USER="${ARTIFACTORY_USER}"
-                set +x
-                HELM_PASSWORD="${ARTIFACTORY_ENCRYPT}"
-                set -x
-            else
-                echo "No Repository Created"
-                exit 1;
+
+            if [[ -z "${ARTIFACTORY_REPOSITORY_KEY}" ]]; then
+              ARTIFACTORY_REPOSITORY_KEY="generic-local"
             fi
+
+            if [[ -z "${HELM_URL}" ]]; then
+              HELM_URL="${ARTIFACTORY_URL}/artifactory/${ARTIFACTORY_REPOSITORY_KEY}"
+            fi
+
           fi
 
           export CHART_ROOT=$(find . -name chart)
