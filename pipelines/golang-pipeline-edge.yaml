@@ -9,15 +9,9 @@ spec:
     - name: git-revision
       description: The git revision (branch, tag, or sha) that should be built
       default: master
-    - name: image-url
-      description: The dev image (use image-release for released image)
-      default: ""
-    - name: image-release
-      description: The url of final released image
-      default: ""
     - name: scan-image
-      description: Flag indicating that a Vulnerability Advisor scan should be performed
-      default: "false"
+      description: Flag indicating that an image scan should be performed
+      default: "true"
   tasks:
     - name: setup
       taskRef:
@@ -27,10 +21,6 @@ spec:
           value: $(params.git-url)
         - name: git-revision
           value: $(params.git-revision)
-        - name: image-url
-          value: $(params.image-url)
-        - name: image-release
-          value: $(params.image-release)
         - name: scan-image
           value: $(params.scan-image)
     - name: test
@@ -67,21 +57,11 @@ spec:
           value: "$(tasks.setup.results.image-repository)"
         - name: image-tag
           value: "$(tasks.setup.results.image-tag)"
-    - name: trivy-scan
-      taskRef:
-        name: ibm-img-scan-trivy
-      runAfter:
-        - build
-      params:
-        - name: image-url
-          value: $(tasks.setup.results.image-url)
-        - name: scan-image
-          value: $(params.scan-image)
     - name: deploy
       taskRef:
         name: ibm-deploy
       runAfter:
-        - trivy-scan
+        - build
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
@@ -151,21 +131,21 @@ spec:
           value: "$(tasks.setup.results.image-url)"
         - name: image-to
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
-    - name: scan
+    - name: img-scan
       taskRef:
-        name: ibm-img-scan-ibm
+        name: ibm-img-scan-trivy
       runAfter:
         - img-release
       params:
         - name: image-url
           value: $(tasks.img-release.results.image-url)
         - name: scan-image
-          value: $(params.scan-image)
+          value: $(tasks.setup.results.scan-image)
     - name: helm-release
       taskRef:
         name: ibm-helm-release
       runAfter:
-        - scan
+        - img-scan
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
