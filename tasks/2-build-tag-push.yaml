@@ -52,13 +52,13 @@ spec:
       env:
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
@@ -80,14 +80,14 @@ spec:
         - name: REGISTRY_USER
           valueFrom:
             secretKeyRef:
-              name: ibmcloud-apikey
+              name: registry-access
               key: REGISTRY_USER
               optional: true
         - name: REGISTRY_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: ibmcloud-apikey
-              key: APIKEY
+              name: registry-access
+              key: REGISTRY_PASSWORD
               optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
