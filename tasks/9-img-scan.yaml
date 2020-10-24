@@ -1,0 +1,187 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-img-scan
+  annotations:
+    description: Runs an image scan with Trivy or IBM VA and fails the build if issues are found.
+    app.openshift.io/description: Runs an image scan with Trivy or IBM VA and fails the build if issues are found.
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: image-url
+      description: "The location of image to scan on IBM Container Registry <server>/<namespace>/<repository>:<tag>"
+    - name: scan-trivy
+      description: Flag indicating that a scan should be performed with Trivy
+      default: "false"
+    - name: scan-ibm
+      description: Flag indicating that a scan should be performed with IBM VA
+      default: "false"
+    - name: SKOPEO_IMAGE
+      default: quay.io/containers/skopeo:v1.1.0
+    - name: IMAGE_FROM_TLS_VERIFY
+      default: "false"
+    - name: TRIVY_IMAGE
+      default: docker.io/aquasec/trivy
+    - name: tools-image
+      default: ibmgaragecloud/ibmcloud-dev:1.2.2
+  volumes:
+    - name: oci-image
+      emptyDir: {}
+  steps:
+    - name: trivy-pull
+      image: $(params.SKOPEO_IMAGE)
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_PASSWORD
+              optional: true
+      volumeMounts:
+        - mountPath: /var/oci
+          name: oci-image
+      securityContext:
+        privileged: true
+      script: |
+        set -ex
+        PERFORM_SCAN="$(params.scan-trivy)"
+        if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+          echo "User selected to skip scanning. Skipping Trivy scan."
+          exit 0
+        fi
+        IMAGE_FROM=$(params.image-url)
+        REGISTRY_SERVER_FROM=$(echo "${IMAGE_FROM}" | awk -F / '{print $1}')
+        IMAGE_TO="oci:/var/oci/image"
+        IMAGE_FROM_TLS_VERIFY=$(params.IMAGE_FROM_TLS_VERIFY)
+        echo "Tagging ${IMAGE_FROM} as ${IMAGE_TO}"
+        set +x
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "${REGISTRY_SERVER_FROM}" != "image-registry.openshift-image-registry.svc:5000" ]]; then
+          IMAGE_FROM_CREDS="--src-creds ${REGISTRY_USER}:${REGISTRY_PASSWORD}"
+        fi
+        set -x
+        if [ "${REGISTRY_SERVER_FROM}" =~ ":" ]; then
+          IMAGE_FROM_TLS_VERIFY="false"
+        fi
+        echo "skopeo copy --src-creds=xxxx --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} docker://${IMAGE_FROM} ${IMAGE_TO}"
+        set +x
+        skopeo copy ${IMAGE_FROM_CREDS} --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} docker://${IMAGE_FROM} ${IMAGE_TO}
+    - name: trivy-scan
+      image: $(params.TRIVY_IMAGE)
+      volumeMounts:
+        - mountPath: /var/oci
+          name: oci-image
+      script: |
+          set -ex
+          PERFORM_SCAN="$(params.scan-trivy)"
+          if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+            echo "User selected to skip scanning. Skipping Trivy scan."
+            exit 0
+          fi
+          PATH_TO_IMAGE="/var/oci/image"
+          echo -e "Trivy Security Scan image in registry"
+          trivy image --exit-code 0 --input ${PATH_TO_IMAGE}
+          trivy image --exit-code 1 --severity CRITICAL --input ${PATH_TO_IMAGE}
+          my_exit_code=$?
+          echo "Scan exit code :--- $my_exit_code"
+          if [ ${my_exit_code} == 1 ]; then
+              echo "Trivy scanning completed. CRITICAL Vulnerabilities found."
+              exit 1
+          else
+            echo "Trivy scanning completed. CRITICAL vulnerabilities not found."
+          fi
+    - name: ibm-scan
+      image: $(params.tools-image)
+      env:
+        - name: HOME
+          value: /home/devops
+        - name: IBM_CLOUD_APIKEY
+          valueFrom:
+            secretKeyRef:
+              key: APIKEY
+              name: ibmcloud-apikey
+              optional: true
+        - name: IBM_CLOUD_RESOURCE_GROUP
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: RESOURCE_GROUP
+              optional: true
+        - name: IBM_CLOUD_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: REGION
+              optional: true
+      script: |
+          #!/usr/bin/env bash
+          set -ex
+          PERFORM_SCAN="$(params.scan-ibm)"
+          if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+            echo "User selected to skip scanning. Skipping Vulnerability Advisor validation."
+            exit 0
+          fi
+
+          IMAGE_URL=$(params.image-url)
+          REGISTRY_SERVER=$(echo $(params.image-url) | awk -F / '{print $1}')
+
+
+
+          if [[ ! "${REGISTRY_SERVER}" =~ icr.io ]]; then
+            echo "The image is not stored in the IBM Cloud Image Registry. Skipping Vulnerability Advisor validation"
+            exit 0
+          fi
+
+
+          echo -e "VA Security Scan image in registry"
+
+          echo "Registry URL: ${REGISTRY_SERVER}"
+
+          set +x
+          ibmcloud login --apikey ${IBM_CLOUD_APIKEY} -r ${IBM_CLOUD_REGION}
+          ibmcloud target -r ${IBM_CLOUD_REGION}
+          set -x
+          ibmcloud cr namespace-list
+
+          echo "Getting the VA status of ${IMAGE_URL}"
+
+          set +e
+          ibmcloud cr va ${IMAGE_URL} --output json | grep -i "Try again later"
+          retry=$?
+          while [ $retry -eq 0 ]; do
+            sleep 30
+            echo "Trying again to see if scan is done"
+            ibmcloud cr va ${IMAGE_URL} --output json | grep -i "Try again later"
+            retry=$?
+          done
+          set -e
+          ibmcloud cr va ${IMAGE_URL} --output json
+          echo "Saving results to va-result.json"
+          ibmcloud cr va ${IMAGE_URL} --output json > va-result.json
+          VA_STATUS=$(cat va-result.json | jq -r '.[].status')
+
+          echo "VA scan status: ${VA_STATUS}"
+
+          if [[ "${VA_STATUS}" == "OK" ]]; then
+            echo "VA - No Issues in the image"
+            exit 0
+          elif [[ $(cat va-result.json | jq -r '.[].vulnerabilities | length') -gt 0 ]]; then
+            echo "VA Failure: $(cat va-result.json | jq -r '.[].vulnerabilities | length') vulnerabilities found in the image"
+            cat va-result.json | jq -r '.[].vulnerabilities'
+            exit 1
+          elif [[ $(cat va-result.json | jq -r '.[].configuration_issues | length') -gt 0 ]]; then
+            echo "VA Warning - $(cat va-result.json | jq -r '.[].configuration_issues | length') configuration issues found in the image"
+            cat va-result.json | jq -r '.[].configuration_issues'
+            exit 0
+          else
+            echo "VA Warning: non-OK status from Vulnerability Advisor ${VA_STATUS}"
+            cat va-result.json | jq -r '.[]'
+          fi
