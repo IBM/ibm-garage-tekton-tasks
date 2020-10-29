@@ -37,11 +37,23 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: app-name
           value: "$(tasks.setup.results.app-name)"
+    - name: hadolint
+      taskRef:
+        name: ibm-hadolint
+      runAfter:
+        - test
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
     - name: build
       taskRef:
         name: ibm-build-tag-push
       runAfter:
-        - test
+        - hadolint
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
