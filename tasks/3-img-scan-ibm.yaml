@@ -40,12 +40,6 @@ spec:
               key: APIKEY
               name: ibmcloud-apikey
               optional: true
-        - name: IBM_CLOUD_RESOURCE_GROUP
-          valueFrom:
-            configMapKeyRef:
-              name: ibmcloud-config
-              key: RESOURCE_GROUP
-              optional: true
         - name: IBM_CLOUD_REGION
           valueFrom:
             configMapKeyRef:
