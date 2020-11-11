@@ -190,7 +190,7 @@ spec:
         fi
         if [[ -z "${REGISTRY_REPOSITORY}" ]]; then
           # Assume repo dir is image repository/image-name
-          REGISTRY_REPOSITORY="$(basename $(echo -n $(git config --get remote.origin.url) | awk -F '.git' '{print $2}') | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')"
+          REGISTRY_REPOSITORY="$(basename $(echo -n $(git config --get remote.origin.url)) .git | tr '[:upper:]' '[:lower:]' | sed 's/_/-/g')"
         fi
         if [[ -z "${REGISTRY_TAG}" ]]; then
           # Assume short git commit revision
