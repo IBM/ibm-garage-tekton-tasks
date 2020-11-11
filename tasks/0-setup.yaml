@@ -235,6 +235,10 @@ spec:
           # Assume current k8s namespace
           REGISTRY_RELEASE_NAMESPACE="${NAMESPACE}"
         fi
+        if [[ -z "${REGISTRY_RELEASE_SERVER}" ]]; then
+          # Assume internal registry
+          REGISTRY_RELEASE_SERVER="image-registry.openshift-image-registry.svc:5000"
+        fi
         REGISTRY_RELEASE_URL="${REGISTRY_RELEASE_SERVER}/${REGISTRY_RELEASE_NAMESPACE}/${REGISTRY_REPOSITORY}"
         echo -n "${REGISTRY_RELEASE_URL}">$(results.image-release.path)
 
