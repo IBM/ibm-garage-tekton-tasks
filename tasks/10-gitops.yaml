@@ -107,7 +107,7 @@ spec:
               optional: true
       script: |
           #!/usr/bin/env bash
-          set -ex
+          set -e
 
           APP_NAME="$(params.app-name)"
           SUBDIR="$(params.subdir)"
@@ -180,6 +180,7 @@ spec:
             cat "${SUBDIR}/${YAML_FILE}"
 
           elif [[ -n "${HELM_URL}" ]]; then
+            echo "Creating first time chart using ${SUBDIR}"
           # create directory
           mkdir -p "${SUBDIR}"
 
