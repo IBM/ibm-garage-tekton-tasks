@@ -181,8 +181,10 @@ spec:
 
           elif [[ -n "${HELM_URL}" ]]; then
             echo "Creating first time chart using ${SUBDIR}"
-          # create directory
-          mkdir -p "${SUBDIR}"
+            # create directory
+            mkdir -p "${SUBDIR}"
+
+            # WARNING: Do not indent the cat commands below
 
           cat <<EOF >"${SUBDIR}/Chart.yaml"
           apiVersion: v2
