@@ -19,10 +19,10 @@ spec:
       default: /source
     - name: subdir
       default: ""
+    - name: parentdir
+      default: ""
     - name: yaml
       default: "requirements.yaml"
-    - name: path-expression
-      default: "dependencies[?(@.name == '${APP_NAME}')].version"
     - name: helm-url
       default: ""
     - name: tools-image
@@ -39,6 +39,10 @@ spec:
       image: $(params.tools-image)
       workingdir: $(params.source-dir)
       env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: HOME
           value: /home/devops
         - name: GIT_USERNAME
@@ -64,6 +68,18 @@ spec:
             secretKeyRef:
               name: gitops-cd-secret
               key: password
+              optional: true
+        - name: GIT_PARENT_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: parentdir
+              optional: true
+        - name: GIT_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: protocol
               optional: true
         - name: GIT_HOST
           valueFrom:
@@ -94,11 +110,26 @@ spec:
           set -ex
 
           APP_NAME="$(params.app-name)"
-          PATH_EXPRESSION="$(params.path-expression)"
           SUBDIR="$(params.subdir)"
           if [[ -z "${SUBDIR}" ]]; then
-            SUBDIR="$(params.app-name)"
+            SUBDIR="${APP_NAME}"
           fi
+          if [[ -n "$(params.parentdir)" ]]; then
+            PARENT_DIR="$(params.parentdir)"
+          elif [[ -n "${GIT_PARENT_DIR}" ]] && [[ "${GIT_PARENT_DIR}" = "bash -c"* ]]; then
+            PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)
+          elif [[ -n "${GIT_PARENT_DIR}" ]]; then
+            PARENT_DIR="${GIT_PARENT_DIR}"
+          else
+            PARENT_DIR="."
+          fi
+          SUBDIR="${PARENT_DIR}/${SUBDIR}"
+
+          PROTOCOL="${GIT_PROTOCOL}"
+          if [[ -z "${PROTOCOL}" ]]; then
+            PROTOCOL="https"
+          fi
+
           YAML_FILE="$(params.yaml)"
           VERSION="$(params.version)"
           HELM_URL="$(params.helm-url)"
@@ -130,24 +161,27 @@ spec:
           git config --global user.name "Cloud Native Toolkit Pipeline"
           echo "git clone ${BRANCH_CMD} https://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
           set +x
-          GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+          GIT_URL="${PROTOCOL}://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
           git clone ${BRANCH_CMD} ${GIT_URL} gitops_cd
           set -x
           cd gitops_cd
 
-          if [[ -d "${SUBDIR}" ]]; then
+
+          if [[ -f "${SUBDIR}/${YAML_FILE}" ]]; then
             echo "Requirements before update"
-            cat "./${SUBDIR}/${YAML_FILE}"
+            cat "${SUBDIR}/${YAML_FILE}"
 
             # TODO avoid using igc to use yq
             npm i -g @garage-catalyst/ibm-garage-cloud-cli
-            igc yq w "./${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].version" ${VERSION} -i
-            igc yq w "./${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].repository" ${HELM_URL} -i
+            igc yq w "${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].version" ${VERSION} -i
+            igc yq w "${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].repository" ${HELM_URL} -i
 
             echo "Requirements after update"
-            cat "./${SUBDIR}/${YAML_FILE}"
+            cat "${SUBDIR}/${YAML_FILE}"
+
           elif [[ -n "${HELM_URL}" ]]; then
-            mkdir -p "${SUBDIR}"
+          # create directory
+          mkdir -p "${SUBDIR}"
 
           cat <<EOF >"${SUBDIR}/Chart.yaml"
           apiVersion: v2
