@@ -159,7 +159,7 @@ spec:
 
           git config --global user.email "gitops@cloudnativetoolkit.dev"
           git config --global user.name "Cloud Native Toolkit Pipeline"
-          echo "git clone ${BRANCH_CMD} https://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+          echo "git clone ${BRANCH_CMD} ${PROTOCOL}://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
           set +x
           GIT_URL="${PROTOCOL}://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
           git clone ${BRANCH_CMD} ${GIT_URL} gitops_cd
