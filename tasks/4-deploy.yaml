@@ -60,7 +60,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
