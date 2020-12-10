@@ -1,0 +1,118 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-operator-bundle
+  annotations:
+    description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
+    app.openshift.io/description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: image-url
+      default: ""
+    - name: image-suffix
+      default: "-bundle"
+    - name: image-tag
+      default: ""
+    - name: BUNDLE_IMAGE
+      default: docker.io/ibmgaragecloud/operator-sdk:0.6.0
+    - name: BUILDER_IMAGE
+      default: quay.io/buildah/stable:v1.15.0
+    - name: DOCKERFILE
+      default: ./bundle.Dockerfile
+    - name: CONTEXT
+      default: .
+    - name: TLSVERIFY
+      default: "false"
+    - name: FORMAT
+      default: "docker"
+    - name: STORAGE_DRIVER
+      description: Set buildah storage driver
+      default: overlay
+  results:
+    - name: bundle-image-url
+  volumes:
+    - name: varlibcontainers
+      emptyDir: {}
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
+    - name: build
+      image: $(params.BUNDLE_IMAGE)
+      workingdir: $(params.source-dir)
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: ibmcloud-apikey
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ibmcloud-apikey
+              key: APIKEY
+              optional: true
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      securityContext:
+        privileged: true
+      script: |
+        export VERSION="$(params.image-tag)"
+        export IMG="$(params.image-url):$(params.image-tag)"
+        export BUNDLE_IMG_BASE="$(params.image-url)$(params.image-suffix)"
+        export BUNDLE_IMG="${BUNDLE_IMG_BASE}:$(params.image-tag)"
+
+        IMAGE_SERVER=$(echo "${BUNDLE_IMG}" | awk -F / '{print $1}')
+
+        make bundle
+
+        podman --storage-driver=$(params.STORAGE_DRIVER) build --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${BUNDLE_IMG} $(params.CONTEXT)
+        set +x
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "${IMAGE_SERVER}" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
+          podman login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "${IMAGE_SERVER}"
+          echo "podman login -u "${REGISTRY_USER}" -p "xxxxx" "${IMAGE_SERVER}""
+        fi
+        set -x
+        podman --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${BUNDLE_IMG} docker://${BUNDLE_IMG}
+
+        echo -n "${BUNDLE_IMG_BASE}" > $(results.bundle-image-url.path)
