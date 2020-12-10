@@ -9,25 +9,11 @@ on:
 
 jobs:
   mirror:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.2
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Install skopeo
-        run: |
-          . /etc/os-release
-          echo "deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/ /" | sudo tee /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list
-          curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_${VERSION_ID}/Release.key | sudo apt-key add -
-          sudo apt-get update
-          sudo apt-get -y upgrade
-          sudo apt-get -y install skopeo
-
-      - name: Install jq
-        run: |
-          curl -Lo jq https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
-          chmod +x jq
-          mv jq /usr/local/bin
+      - uses: actions/checkout@v1
 
       - name: Mirror
         run: ./bin/mirror.sh "${{ secrets.REGISTRY_USER }}" "${{ secrets.REGISTRY_PASSWORD }}"
