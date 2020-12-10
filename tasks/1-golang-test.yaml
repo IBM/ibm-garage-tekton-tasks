@@ -19,9 +19,9 @@ spec:
     - name: app-name
       default: "my-golang-app"
     - name: golang-image
-      default: golang:stretch
+      default: quay.io/ibmgaragecloud/golang:stretch
     - name: sonarqube-cli
-      default: sonarsource/sonar-scanner-cli
+      default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
   volumes:
     - name: source
       emptyDir: {}
@@ -31,7 +31,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: GIT_PASSWORD
           valueFrom:

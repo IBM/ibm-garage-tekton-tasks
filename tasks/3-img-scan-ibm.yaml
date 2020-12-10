@@ -17,7 +17,7 @@ spec:
       description: Flag indicating that a scan should be performed
       default: "false"
     - name: tools-image
-      default: ibmgaragecloud/ibmcloud-dev:1.2.2
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.1
     - name: source-dir
       default: /source
   volumes:

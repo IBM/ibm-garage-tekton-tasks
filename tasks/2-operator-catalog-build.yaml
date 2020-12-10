@@ -25,7 +25,7 @@ spec:
     - name: image-tag
       default: ""
     - name: OPM_IMAGE
-      default: docker.io/ibmgaragecloud/operator-sdk:0.6.0
+      default: quay.io/ibmgaragecloud/operator-sdk:v0.6.0
     - name: BUILDER_IMAGE
       default: quay.io/buildah/stable:v1.15.1
     - name: DOCKERFILE
@@ -52,7 +52,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: GIT_PASSWORD
           valueFrom:

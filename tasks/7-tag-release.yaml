@@ -19,7 +19,7 @@ spec:
     - name: skip-push
       default: ""
     - name: js-image
-      default: docker.io/node:lts-stretch
+      default: quay.io/ibmgaragecloud/node:lts-stretch
   results:
     - name: tag
   volumes:
@@ -31,7 +31,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: NAMESPACE
           valueFrom:

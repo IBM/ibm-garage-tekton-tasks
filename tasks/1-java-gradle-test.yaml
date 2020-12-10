@@ -19,11 +19,11 @@ spec:
     - name: app-name
       default: "my-java-gradle-app"
     - name: gradle-image
-      default: gradle:jdk11
+      default: quay.io/ibmgaragecloud/gradle:jdk11
     - name: sonarqube-java-bin-path
       default: build
     - name: sonarqube-cli
-      default: sonarsource/sonar-scanner-cli
+      default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
   volumes:
     - name: source
       emptyDir: {}
@@ -36,7 +36,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: GIT_PASSWORD
           valueFrom:
