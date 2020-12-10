@@ -1,10 +1,11 @@
 name: Release
 
 # Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# events but only for the main branch
 on:
   push:
-    branches: [ master ]
+    branches:
+      - main
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -16,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      # Drafts your next Release notes as Pull Requests are merged into "master"
+      # Drafts your next Release notes as Pull Requests are merged into "main"
       - name: Create release
         id: create-release
         uses: release-drafter/release-drafter@v5

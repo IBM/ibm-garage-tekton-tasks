@@ -122,6 +122,6 @@ not need credentials.)
 
 The GitHub Action workflow that triggers the mirroring process. The workflow will be
 triggered on a schedule at 1am every morning and each time a change is
-pushed to the `master` branch.
+pushed to the `main` branch.
 
 It gets the values for the registry user and registry password from secrets in the Git repo.
