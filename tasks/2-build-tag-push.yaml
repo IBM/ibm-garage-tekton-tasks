@@ -48,7 +48,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: GIT_PASSWORD
           valueFrom:

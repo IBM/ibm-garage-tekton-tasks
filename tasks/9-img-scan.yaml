@@ -24,9 +24,9 @@ spec:
     - name: IMAGE_FROM_TLS_VERIFY
       default: "false"
     - name: TRIVY_IMAGE
-      default: docker.io/aquasec/trivy
+      default: quay.io/ibmgaragecloud/aquasec-trivy
     - name: tools-image
-      default: ibmgaragecloud/ibmcloud-dev:1.2.2
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.1
   volumes:
     - name: oci-image
       emptyDir: {}

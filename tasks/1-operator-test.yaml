@@ -19,7 +19,7 @@ spec:
     - name: app-name
       default: "my-java-gradle-app"
     - name: build-image
-      default: docker.io/ibmgaragecloud/operator-sdk:0.5.0
+      default: quay.io/ibmgaragecloud/operator-sdk:v0.6.0
   volumes:
     - name: source
       emptyDir: {}
@@ -29,7 +29,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: GIT_PASSWORD
           valueFrom:
