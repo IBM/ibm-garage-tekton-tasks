@@ -77,7 +77,6 @@ spec:
           cat ${FILE}
           hadolint --config ${HADOLINT_CFG} $(params.DOCKERFILE)
 
-        
         elif [ ! -f "${FILE}" ]; then
           echo "Skipping Dockerfile lint step, given that no hadolint configuration file is found"
           exit 0
@@ -88,7 +87,7 @@ spec:
           hadolint $(params.DOCKERFILE)
         fi
 
-          echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/ "
+        echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/ "
 
         set -x
 
