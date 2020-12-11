@@ -90,4 +90,3 @@ spec:
         echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/ "
 
         set -x
-
