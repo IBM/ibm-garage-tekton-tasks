@@ -59,7 +59,7 @@ spec:
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.1
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
     - name: js-image
       default: quay.io/ibmgaragecloud/node:lts-stretch
   results:

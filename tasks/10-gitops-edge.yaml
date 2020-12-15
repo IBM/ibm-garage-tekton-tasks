@@ -23,7 +23,7 @@ spec:
     - name: version
       default: ""
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.1
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
   volumes:
     - name: source
       emptyDir: {}

@@ -26,7 +26,7 @@ spec:
     - name: helm-url
       default: ""
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.1
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
   volumes:
     - name: source
       emptyDir: {}
@@ -171,10 +171,12 @@ spec:
             echo "Requirements before update"
             cat "${SUBDIR}/${YAML_FILE}"
 
-            # TODO avoid using igc to use yq
-            npm i -g @garage-catalyst/ibm-garage-cloud-cli
-            igc yq w "${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].version" ${VERSION} -i
-            igc yq w "${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].repository" ${HELM_URL} -i
+            yq r "${SUBDIR}/${YAML_FILE}" -j | \
+              jq --arg APP_NAME "${APP_NAME}" --arg VERSION "${VERSION}" --arg REPO "${HELM_URL}" '.dependencies |= map((select(.name == $APP_NAME) | .version = $VERSION | .repository = $REPO) // .)' | \
+              yq p --prettyPrint - > "${SUBDIR}/${YAML_FILE}.new"
+
+            rm "${SUBDIR}/${YAML_FILE}"
+            mv "${SUBDIR}/${YAML_FILE}.new" "${SUBDIR}/${YAML_FILE}"
 
             echo "Requirements after update"
             cat "${SUBDIR}/${YAML_FILE}"
