@@ -25,7 +25,7 @@ spec:
     - name: helm-curl
       default: ""
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.1
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
   results:
     - name: helm-url
       description: The url of the helm repository

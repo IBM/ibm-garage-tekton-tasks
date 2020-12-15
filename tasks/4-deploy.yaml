@@ -31,7 +31,7 @@ spec:
     - name: deploy-ingress-type
       default: "route"
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.1
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
   results:
     - name: service-port
   volumes:
