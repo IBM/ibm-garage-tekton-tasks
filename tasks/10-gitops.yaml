@@ -173,7 +173,7 @@ spec:
 
             yq r "${SUBDIR}/${YAML_FILE}" -j | \
               jq --arg APP_NAME "${APP_NAME}" --arg VERSION "${VERSION}" --arg REPO "${HELM_URL}" '.dependencies |= map((select(.name == $APP_NAME) | .version = $VERSION | .repository = $REPO) // .)' | \
-              yq p --prettyPrint - > "${SUBDIR}/${YAML_FILE}.new"
+              yq r --prettyPrint - > "${SUBDIR}/${YAML_FILE}.new"
 
             rm "${SUBDIR}/${YAML_FILE}"
             mv "${SUBDIR}/${YAML_FILE}.new" "${SUBDIR}/${YAML_FILE}"
