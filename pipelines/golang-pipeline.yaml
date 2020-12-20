@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: ibm-golang
+  annotations:
+    app.openshift.io/runtime: golang
 spec:
   params:
     - name: git-url

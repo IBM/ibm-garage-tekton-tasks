@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: ibm-nodejs
+  annotations:
+    app.openshift.io/runtime: nodejs
 spec:
   params:
     - name: git-url
