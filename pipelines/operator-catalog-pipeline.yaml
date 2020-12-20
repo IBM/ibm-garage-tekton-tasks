@@ -2,6 +2,8 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: ibm-operator-catalog
+  annotations:
+    app.openshift.io/runtime: operator
 spec:
   params:
     - name: git-url

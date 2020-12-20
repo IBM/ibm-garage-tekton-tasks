@@ -2,6 +2,9 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: ibm-java-maven
+  annotations:
+    app.openshift.io/runtime: openjdk
+    app.openshift.io/builder: maven
 spec:
   params:
     - name: git-url
