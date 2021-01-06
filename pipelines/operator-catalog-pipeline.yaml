@@ -18,7 +18,7 @@ spec:
       description: The url of final released image
       default: ""
     - name: scan-image
-      description: Flag indicating that a Vulnerability Advisor scan should be performed
+      description: Enable the pipeline to scan the image for vulnerabilities
       default: "false"
   tasks:
     - name: setup
