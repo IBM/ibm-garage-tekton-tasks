@@ -12,7 +12,7 @@ spec:
       description: The git revision (branch, tag, or sha) that should be built
       default: master
     - name: scan-image
-      description: Flag indicating that an image scan should be performed
+      description: Enable the pipeline to scan the image for vulnerabilities
       default: "true"
   tasks:
     - name: setup
