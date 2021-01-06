@@ -1,0 +1,69 @@
+name: Verify
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+
+    outputs:
+      project: ${{steps.setup.outputs.project}}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: setup
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
+          echo "::set-output name=branch::${BRANCH}"
+          echo "::set-output name=project::tools-${BRANCH}"
+
+      - name: Cluster login
+        run: oc login -u ${{ secrets.CLUSTER_USER }} -p ${{ secrets.CLUSTER_PASSWORD }} ${{ secrets.CLUSTER_SERVER }}
+
+      - name: Create project
+        run: |
+          oc new-project ${{steps.setup.outputs.project}}
+          oc apply -f tasks/
+          oc apply -f pipelines/
+
+  deploy:
+    runs-on: ubuntu-latest
+    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    needs: setup
+
+    strategy:
+      matrix:
+        projects:
+         - https://github.com/IBM/template-node-typescript
+
+    steps:
+      - name: Cluster login
+        run: oc login -u ${{ secrets.CLUSTER_USER }} -p ${{ secrets.CLUSTER_PASSWORD }} ${{ secrets.CLUSTER_SERVER }}
+
+      - name: Setup tools (eventually should be moved to image)
+        run: curl -sL shell.cloudnativetoolkit.dev | sh - && . ~/.bashrc
+
+      - name: Register pipeline - ${{ matrix.projects }}
+        run: |
+          oc project ${{steps.setup.outputs.project}}
+          igc pipeline -t ${{steps.setup.outputs.project}} --tekton ${{ matrix.projects }} -p scan-image=false
+
+  cleanup:
+    runs-on: ubuntu-latest
+    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    needs: [setup, deploy]
+
+    if: ${{ always() }}
+
+    steps:
+      - name: Cluster login
+        run: oc login -u ${{ secrets.CLUSTER_USER }} -p ${{ CLUSTER_PASSWORD }} ${{ secrets.CLUSTER_SERVER }}
+
+      - name: Remove project
+        run: oc delete project ${{needs.setup.outputs.project}}
+
