@@ -168,15 +168,25 @@ spec:
 
 
           if [[ -f "${SUBDIR}/${YAML_FILE}" ]]; then
-            echo "Requirements before update"
-            cat "${SUBDIR}/${YAML_FILE}"
+          
+            if [[ -f "./${SUBDIR}/${YAML_FILE}" ]]; then
+              echo "Requirements before update"
+              cat "./${SUBDIR}/${YAML_FILE}"
+              # TODO avoid using igc to use yq
+              npm i -g @garage-catalyst/ibm-garage-cloud-cli
+              igc yq w "./${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].version" ${VERSION} -i
+              igc yq w "./${SUBDIR}/${YAML_FILE}" "dependencies[?(@.name == '${APP_NAME}')].repository" ${HELM_URL} -i
+            else
+              echo "No Requirements, creating file"
+        cat <<EOF >"${SUBDIR}/${YAML_FILE}"
 
-            yq r "${SUBDIR}/${YAML_FILE}" -j | \
-              jq --arg APP_NAME "${APP_NAME}" --arg VERSION "${VERSION}" --arg REPO "${HELM_URL}" '.dependencies |= map((select(.name == $APP_NAME) | .version = $VERSION | .repository = $REPO) // .)' | \
-              yq r --prettyPrint - > "${SUBDIR}/${YAML_FILE}.new"
-
-            rm "${SUBDIR}/${YAML_FILE}"
-            mv "${SUBDIR}/${YAML_FILE}.new" "${SUBDIR}/${YAML_FILE}"
+        dependencies:
+          - name: ${APP_NAME}
+            version: ${VERSION}
+            repository: >-
+              ${HELM_URL}
+        EOF
+            fi
 
             echo "Requirements after update"
             cat "${SUBDIR}/${YAML_FILE}"
