@@ -62,7 +62,7 @@ jobs:
 
     steps:
       - name: Cluster login
-        run: oc login -u ${{ secrets.CLUSTER_USER }} -p ${{ CLUSTER_PASSWORD }} ${{ secrets.CLUSTER_SERVER }}
+        run: oc login -u ${{ secrets.CLUSTER_USER }} -p ${{ secrets.CLUSTER_PASSWORD }} ${{ secrets.CLUSTER_SERVER }}
 
       - name: Remove project
         run: oc delete project ${{needs.setup.outputs.project}}
