@@ -8,6 +8,7 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    options: -u 0
 
     outputs:
       project: ${{steps.setup.outputs.project}}
@@ -34,6 +35,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    options: -u 0
     needs: setup
 
     strategy:
@@ -56,6 +58,7 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    options: -u 0
     needs: [setup, deploy]
 
     if: ${{ always() }}
