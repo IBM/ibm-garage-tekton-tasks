@@ -28,9 +28,12 @@ jobs:
       - name: Cluster login
         run: oc login -u ${{ secrets.CLUSTER_USER }} -p ${{ secrets.CLUSTER_PASSWORD }} ${{ secrets.CLUSTER_SERVER }}
 
+      - name: Setup tools (eventually should be moved to image)
+        run: curl -sL shell.cloudnativetoolkit.dev | sh - && . ~/.bashrc
+
       - name: Create project
         run: |
-          oc new-project ${{steps.setup.outputs.project}}
+          oc sync ${{steps.setup.outputs.project}}
           oc apply -f tasks/
           oc apply -f pipelines/
 
