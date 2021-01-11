@@ -10,7 +10,7 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
-    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.2
+    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
 
     steps:
       - uses: actions/checkout@v1
