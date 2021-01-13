@@ -18,6 +18,9 @@ spec:
     - name: health-endpoint
       description: Endpoint to check health after deployment, liberty uses / not /health
       default: "/"
+    - name: java-bin-path
+      description: The path to the java binaries. The default value is "target"
+      default: target
   tasks:
     - name: setup
       taskRef:
@@ -45,6 +48,8 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: app-name
           value: "$(tasks.setup.results.app-name)"
+        - name: sonarqube-java-bin-path
+          value: "$(params.java-bin-path)"
     - name: build
       taskRef:
         name: ibm-build-tag-push
