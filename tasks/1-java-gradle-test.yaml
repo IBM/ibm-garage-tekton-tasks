@@ -19,11 +19,11 @@ spec:
     - name: app-name
       default: "my-java-gradle-app"
     - name: gradle-image
-      default: gradle:jdk11
+      default: quay.io/ibmgaragecloud/gradle:jdk11
     - name: sonarqube-java-bin-path
       default: build
     - name: sonarqube-cli
-      default: sonarsource/sonar-scanner-cli
+      default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
   volumes:
     - name: source
       emptyDir: {}
@@ -36,7 +36,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: GIT_PASSWORD
           valueFrom:
@@ -53,7 +53,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)

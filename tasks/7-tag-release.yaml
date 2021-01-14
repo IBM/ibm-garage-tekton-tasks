@@ -19,7 +19,7 @@ spec:
     - name: skip-push
       default: ""
     - name: js-image
-      default: docker.io/node:lts-stretch
+      default: quay.io/ibmgaragecloud/node:lts-stretch
   results:
     - name: tag
   volumes:
@@ -31,7 +31,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: NAMESPACE
           valueFrom:
@@ -39,20 +39,20 @@ spec:
               fieldPath: metadata.namespace
         - name: GIT_PASSWORD
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: password
               optional: true
         - name: GIT_USERNAME
           valueFrom:
-            secretKeyRef: 
+            secretKeyRef:
               name: git-credentials
               key: username
               optional: true
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -91,13 +91,13 @@ spec:
           --no-git.requireCleanWorkingDir \
           --no-git.requireUpstream \
           -VV
-        
+
         if [[ -z "$(params.skip-push)" ]]; then
           set +x
           git push --tags -v
           set -x
         fi
-        
+
         NEW_TAG="$(git describe --abbrev=0 --tags)"
         if [[ -z "${NEW_TAG}" ]]; then
             echo "Error: NEW_TAG not defined"

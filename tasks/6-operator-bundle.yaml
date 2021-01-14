@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-build-tag-push
+  name: ibm-operator-bundle
   annotations:
     description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
     app.openshift.io/description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
@@ -16,18 +16,18 @@ spec:
       default: master
     - name: source-dir
       default: /source
-    - name: image-server
+    - name: image-url
       default: ""
-    - name: image-namespace
-      default: ""
-    - name: image-repository
-      default: ""
+    - name: image-suffix
+      default: "-bundle"
     - name: image-tag
       default: ""
+    - name: BUNDLE_IMAGE
+      default: quay.io/ibmgaragecloud/operator-sdk:v0.6.0
     - name: BUILDER_IMAGE
       default: quay.io/buildah/stable:v1.15.0
     - name: DOCKERFILE
-      default: ./Dockerfile
+      default: ./bundle.Dockerfile
     - name: CONTEXT
       default: .
     - name: TLSVERIFY
@@ -37,6 +37,8 @@ spec:
     - name: STORAGE_DRIVER
       description: Set buildah storage driver
       default: overlay
+  results:
+    - name: bundle-image-url
   volumes:
     - name: varlibcontainers
       emptyDir: {}
@@ -65,7 +67,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -74,20 +76,20 @@ spec:
         cd $(params.source-dir)
         git checkout $(params.git-revision)
     - name: build
-      image: $(params.BUILDER_IMAGE)
+      image: $(params.BUNDLE_IMAGE)
       workingdir: $(params.source-dir)
       env:
         - name: REGISTRY_USER
           valueFrom:
             secretKeyRef:
-              name: registry-access
+              name: ibmcloud-apikey
               key: REGISTRY_USER
               optional: true
         - name: REGISTRY_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: registry-access
-              key: REGISTRY_PASSWORD
+              name: ibmcloud-apikey
+              key: APIKEY
               optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
@@ -95,13 +97,22 @@ spec:
       securityContext:
         privileged: true
       script: |
-        APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
-        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
+        export VERSION="$(params.image-tag)"
+        export IMG="$(params.image-url):$(params.image-tag)"
+        export BUNDLE_IMG_BASE="$(params.image-url)$(params.image-suffix)"
+        export BUNDLE_IMG="${BUNDLE_IMG_BASE}:$(params.image-tag)"
+
+        IMAGE_SERVER=$(echo "${BUNDLE_IMG}" | awk -F / '{print $1}')
+
+        make bundle
+
+        podman --storage-driver=$(params.STORAGE_DRIVER) build --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${BUNDLE_IMG} $(params.CONTEXT)
         set +x
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
-          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
-          echo "buildah login -u "${REGISTRY_USER}" -p "xxxxx" "$(params.image-server)""
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "${IMAGE_SERVER}" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
+          podman login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "${IMAGE_SERVER}"
+          echo "podman login -u "${REGISTRY_USER}" -p "xxxxx" "${IMAGE_SERVER}""
         fi
         set -x
-        buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+        podman --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${BUNDLE_IMG} docker://${BUNDLE_IMG}
 
+        echo -n "${BUNDLE_IMG_BASE}" > $(results.bundle-image-url.path)

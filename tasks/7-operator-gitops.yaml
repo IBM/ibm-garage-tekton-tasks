@@ -1,0 +1,145 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-operator-gitops
+  annotations:
+    description: Publishes the helm chart configuration to the provided gitops repo to trigger downstream deployments
+    app.openshift.io/description: Publishes the helm chart configuration to the provided gitops repo to trigger downstream deployments
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: app-name
+      default: ""
+    - name: version
+      default: ""
+    - name: git-branch
+      default: ""
+    - name: source-dir
+      default: /source
+    - name: subdir
+      default: ""
+    - name: image-url
+      default: ""
+    - name: tools-image
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: gitops
+      image: $(params.tools-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: HOME
+          value: /home/devops
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: username
+              optional: true
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME_CD
+          valueFrom:
+            secretKeyRef:
+              name: olm-catalog-secret
+              key: username
+              optional: true
+        - name: GIT_PASSWORD_CD
+          valueFrom:
+            secretKeyRef:
+              name: olm-catalog-secret
+              key: password
+              optional: true
+        - name: GIT_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: host
+              optional: true
+        - name: GIT_ORG
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: org
+              optional: true
+        - name: GIT_REPO
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: repo
+              optional: true
+      script: |
+        #!/usr/bin/env bash
+        set -ex
+
+        BRANCH_CMD=""
+        if [[ -n "$(params.git-branch)" ]]; then
+          BRANCH_CMD="-b $(params.app-name)"
+        fi
+
+        APP_NAME="$(params.app-name)"
+        if [[ -z "${SUBDIR}" ]]; then
+          SUBDIR="$(params.app-name)"
+        fi
+        VERSION="$(params.version)"
+
+        BUNDLE_URL="$(params.image-url)"
+
+        if [[ -z "${GIT_HOST}" ]] || [[ -z "${GIT_ORG}" ]] || [[ -z "${GIT_REPO}" ]]; then
+            echo "GitOps repo has not been configured with confimap gitops-repo. Skipping trigger step"
+            exit 0
+        fi
+
+        set +x
+        if [[ -n "${GIT_USERNAME_CD}" ]]; then
+          GIT_AUTH_USER="${GIT_USERNAME_CD}"
+          GIT_AUTH_PWD="${GIT_PASSWORD_CD}"
+        elif [[ -n "${GIT_USERNAME}" ]]; then
+          GIT_AUTH_USER="${GIT_USERNAME}"
+          GIT_AUTH_PWD="${GIT_PASSWORD}"
+        else
+          echo "Credentials for GitOps repo not set in secret gitops-cd-secret or git-credentials"
+          exit 1
+        fi
+        set -x
+
+        git config --global user.email "gitops@cloudnativetoolkit.dev"
+        git config --global user.name "Cloud Native Toolkit Pipeline"
+        echo "Cloning repo: https://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        set +x
+        GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        git clone ${BRANCH_CMD} ${GIT_URL} gitops_cd
+        set -x
+        cd gitops_cd
+
+        BUNDLE_METADATA="bundles.txt"
+        if [[ -d "${SUBDIR}" ]]; then
+          BUNDLE_METADATA="${SUBDIR}/${BUNDLE_METADATA}"
+        fi
+
+        touch ${BUNDLE_METADATA}
+        if ! grep -qE "${BUNDLE_URL}:${VERSION}$" ${BUNDLE_METADATA}; then
+          echo "${BUNDLE_URL}:${VERSION}" >> ${BUNDLE_METADATA}
+        fi
+
+        if [[ $(git status -s | wc -l) -eq 0 ]]; then
+          echo "No changes"
+          exit 0
+        fi
+
+        git add ${BUNDLE_METADATA}
+        git commit -m "Updates ${APP_NAME} to ${VERSION}"
+        git push -v

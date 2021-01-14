@@ -19,11 +19,11 @@ spec:
     - name: app-name
       default: "my-java-maven-app"
     - name: maven-image
-      default: maven:3.6.3-jdk-11-slim
+      default: quay.io/ibmgaragecloud/maven:3.6.3-jdk-11-slim
     - name: sonarqube-java-bin-path
       default: target
     - name: sonarqube-cli
-      default: sonarsource/sonar-scanner-cli
+      default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
   volumes:
     - name: source
       emptyDir: {}
@@ -33,7 +33,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: alpine/git
+      image: quay.io/ibmgaragecloud/alpine-git
       env:
         - name: GIT_PASSWORD
           valueFrom:
@@ -50,7 +50,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -62,12 +62,20 @@ spec:
       image: $(params.maven-image)
       workingdir: $(params.source-dir)
       script: |
+        if [[ -f "./mvnw" ]]; then
+          ./mvnw package
+        else
           mvn package
+        fi
     - name: test
       image: $(params.maven-image)
       workingdir: $(params.source-dir)
       script: |
+        if [[ -f "./mvnw" ]]; then
+          ./mvnw test
+        else
           mvn test
+        fi
     - name: sonar-scan
       image: $(params.sonarqube-cli)
       workingdir: $(params.source-dir)

@@ -1,0 +1,19 @@
+name: Mirror images
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  push:
+    branches:
+    - main
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Mirror
+        run: ./bin/mirror.sh "${{ secrets.REGISTRY_USER }}" "${{ secrets.REGISTRY_PASSWORD }}"

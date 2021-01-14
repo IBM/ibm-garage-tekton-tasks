@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-build-tag-push
+  name: ibm-operator-catalog-build
   annotations:
     description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
     app.openshift.io/description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
@@ -24,16 +24,20 @@ spec:
       default: ""
     - name: image-tag
       default: ""
+    - name: OPM_IMAGE
+      default: quay.io/ibmgaragecloud/operator-sdk:v0.6.0
     - name: BUILDER_IMAGE
-      default: quay.io/buildah/stable:v1.15.0
+      default: quay.io/buildah/stable:v1.15.1
     - name: DOCKERFILE
-      default: ./Dockerfile
+      default: ./index.Dockerfile
     - name: CONTEXT
       default: .
     - name: TLSVERIFY
       default: "false"
     - name: FORMAT
       default: "docker"
+    - name: BUNDLE_CATALOG
+      default: "bundles.txt"
     - name: STORAGE_DRIVER
       description: Set buildah storage driver
       default: overlay
@@ -65,7 +69,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -73,6 +77,49 @@ spec:
         set -x
         cd $(params.source-dir)
         git checkout $(params.git-revision)
+    - name: generate-catalog
+      image: $(params.OPM_IMAGE)
+      workingdir: $(params.source-dir)
+      env:
+        - name: REGISTRY_URL
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_URL
+              optional: true
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_PASSWORD
+              optional: true
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      securityContext:
+        privileged: true
+      script: |
+        touch $(params.BUNDLE_CATALOG)
+
+        BUNDLES=$(cat $(params.BUNDLE_CATALOG) | paste -sd "," -)
+
+        set +x
+
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ -n "{REGISTRY_URL}" ]] && [[ "${REGISTRY_URL}" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
+          mkdir -p "${HOME}/.docker"
+          echo "podman login -u "${REGISTRY_USER}" -p "xxxxx" --authfile="${HOME}/.docker/config.json" "${REGISTRY_URL}""
+          podman login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" --authfile="${HOME}/.docker/config.json" "${REGISTRY_URL}"
+        fi
+
+        set -x
+
+        opm index add --bundles "${BUNDLES}" --generate -d $(params.DOCKERFILE)
     - name: build
       image: $(params.BUILDER_IMAGE)
       workingdir: $(params.source-dir)
@@ -104,4 +151,3 @@ spec:
         fi
         set -x
         buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
-
