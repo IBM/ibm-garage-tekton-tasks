@@ -77,13 +77,14 @@ spec:
           cat ${FILE}
           hadolint --config ${HADOLINT_CFG} $(params.DOCKERFILE)
 
-        elif [ ! -f "${FILE}" ]; then
-          echo "Skipping Dockerfile lint step, given that no hadolint configuration file is found"
-          exit 0
-        
-        else
+       elif [ -f "${FILE}" ]; then
           echo "In this step, hadolint will lint your Dockerfile, using .hadolint.yaml, with the following rules: "
           cat "${FILE}"
+          hadolint $(params.DOCKERFILE)
+        
+        else
+          echo "In this step, hadolint will lint your Dockerfile" 
+          echo "If you would like to configure hadolint, please see https://github.com/hadolint/hadolint"
           hadolint $(params.DOCKERFILE)
         fi
 
