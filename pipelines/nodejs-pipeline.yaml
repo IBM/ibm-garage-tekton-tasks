@@ -14,6 +14,9 @@ spec:
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "true"
+    - name: lint-dockerfile
+      description: Enable the pipeline to lint the Dockerfile for best practices
+      default: "true"
   tasks:
     - name: setup
       taskRef:
@@ -25,6 +28,8 @@ spec:
           value: $(params.git-revision)
         - name: scan-image
           value: $(params.scan-image)
+        - name: lint-dockerfile
+          value: $(params.lint-dockerfile)
     - name: test
       taskRef:
         name: ibm-nodejs-test
@@ -53,6 +58,8 @@ spec:
           value: "$(tasks.setup.results.git-revision)"
         - name: source-dir
           value: "$(tasks.setup.results.source-dir)"
+        - name: lint-dockerfile
+          value: "$(tasks.setup.results.dockerfile-lint)"
     - name: build
       taskRef:
         name: ibm-build-tag-push

@@ -22,6 +22,9 @@ spec:
       default: .
     - name: LINT_IMAGE
       default: hadolint/hadolint
+    - name: lint-dockerfile
+      default: "true"
+
   volumes:
     - name: source
       emptyDir: {}
@@ -68,26 +71,32 @@ spec:
               optional: true
       script: | 
         set +x
-
+        PERFORM_LINT="$(params.lint-dockerfile)"
+        if [[ "${PERFORM_LINT}" == "false" ]] || [[ -z "${PERFORM_LINT}" ]]; then
+          echo "User selected to skip Dockerfile linting. Skipping this task."
+          exit 0
+        fi
+        
         FILE="$(params.source-dir)"/.hadolint.yaml
 
         if [ -f "${HADOLINT_CFG}" ]; then
           FILE="$(params.source-dir)/${HADOLINT_CFG}"
           echo "In this step, hadolint will lint your Dockerfile, using ${FILE}, with the following rules: "
           cat ${FILE}
+          echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
           hadolint --config ${HADOLINT_CFG} $(params.DOCKERFILE)
 
-       elif [ -f "${FILE}" ]; then
-          echo "In this step, hadolint will lint your Dockerfile, using .hadolint.yaml, with the following rules: "
+        elif [ -f "${FILE}" ]; then
+          echo "In this step, hadolint will lint your Dockerfile, using .hadolint.yaml in your repository, with the following rules: "
           cat "${FILE}"
+          echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
           hadolint $(params.DOCKERFILE)
         
         else
           echo "In this step, hadolint will lint your Dockerfile" 
           echo "If you would like to configure hadolint, please see https://github.com/hadolint/hadolint"
+          echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
           hadolint $(params.DOCKERFILE)
         fi
-
-        echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/ "
-
+        
         set -x
