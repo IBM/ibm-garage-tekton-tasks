@@ -11,12 +11,6 @@ spec:
     - name: git-revision
       description: The git revision (branch, tag, or sha) that should be built
       default: master
-    - name: image-url
-      description: The dev image (use image-release for released image)
-      default: ""
-    - name: image-release
-      description: The url of final released image
-      default: ""
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "false"

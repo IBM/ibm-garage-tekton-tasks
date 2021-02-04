@@ -67,7 +67,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -82,14 +82,14 @@ spec:
         - name: REGISTRY_USER
           valueFrom:
             secretKeyRef:
-              name: ibmcloud-apikey
+              name: registry-access
               key: REGISTRY_USER
               optional: true
         - name: REGISTRY_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: ibmcloud-apikey
-              key: APIKEY
+              name: registry-access
+              key: REGISTRY_PASSWORD
               optional: true
       volumeMounts:
         - mountPath: /var/lib/containers

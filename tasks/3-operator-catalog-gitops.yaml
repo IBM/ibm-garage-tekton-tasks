@@ -18,13 +18,13 @@ spec:
       default: master
     - name: app-name
       default: ""
-    - name: git-branch
-      default: ""
     - name: source-dir
       default: /source
     - name: gitops-dir
       default: /gitops
     - name: subdir
+      default: ""
+    - name: parentdir
       default: ""
     - name: deploy-dir
       default: deploy
@@ -62,7 +62,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -74,6 +74,10 @@ spec:
       image: $(params.tools-image)
       workingdir: $(params.gitops-dir)
       env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: HOME
           value: /home/devops
         - name: GIT_USERNAME
@@ -100,6 +104,18 @@ spec:
               name: gitops-cd-secret
               key: password
               optional: true
+        - name: GIT_PARENT_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: parentdir
+              optional: true
+        - name: GIT_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: protocol
+              optional: true
         - name: GIT_HOST
           valueFrom:
             configMapKeyRef:
@@ -118,19 +134,37 @@ spec:
               name: gitops-repo
               key: repo
               optional: true
+        - name: GIT_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: branch
+              optional: true
       script: |
         #!/usr/bin/env bash
         set -ex
 
-        BRANCH_CMD=""
-        if [[ -n "$(params.git-branch)" ]]; then
-          BRANCH_CMD="-b $(params.app-name)"
+        APP_NAME="$(params.app-name)"
+        SUBDIR="$(params.subdir)"
+        if [[ -z "${SUBDIR}" ]]; then
+          SUBDIR="${APP_NAME}"
+        fi
+        if [[ -n "$(params.parentdir)" ]]; then
+          PARENT_DIR="$(params.parentdir)"
+        elif [[ -n "${GIT_PARENT_DIR}" ]] && [[ "${GIT_PARENT_DIR}" = "bash -c"* ]]; then
+          PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)
+        elif [[ -n "${GIT_PARENT_DIR}" ]]; then
+          PARENT_DIR="${GIT_PARENT_DIR}"
+        else
+          PARENT_DIR="."
+        fi
+        SUBDIR="${PARENT_DIR}/${SUBDIR}"
+
+        PROTOCOL="${GIT_PROTOCOL}"
+        if [[ -z "${PROTOCOL}" ]]; then
+          PROTOCOL="https"
         fi
 
-        APP_NAME="$(params.app-name)"
-        if [[ -z "${SUBDIR}" ]]; then
-          SUBDIR="$(params.app-name)"
-        fi
 
         BUNDLE_URL="$(params.image-url)"
 
@@ -152,11 +186,16 @@ spec:
         fi
         set -x
 
+        BRANCH_CMD=""
+        if [[ -n "${GIT_BRANCH}" ]]; then
+          BRANCH_CMD="-b ${GIT_BRANCH}"
+        fi
+
         git config --global user.email "gitops@cloudnativetoolkit.dev"
         git config --global user.name "Cloud Native Toolkit Pipeline"
-        echo "Cloning repo: https://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        echo "git clone ${BRANCH_CMD} ${PROTOCOL}://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
         set +x
-        GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        GIT_URL="${PROTOCOL}://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
         git clone ${BRANCH_CMD} ${GIT_URL} $(params.gitops-dir)
         set -x
         cd $(params.gitops-dir)

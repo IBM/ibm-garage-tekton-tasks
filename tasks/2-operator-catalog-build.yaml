@@ -16,6 +16,8 @@ spec:
       default: master
     - name: source-dir
       default: /source
+    - name: subdir
+      default: ""
     - name: image-server
       default: ""
     - name: image-namespace
@@ -69,7 +71,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -99,12 +101,32 @@ spec:
               name: registry-access
               key: REGISTRY_PASSWORD
               optional: true
+        - name: GIT_PARENT_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: parentdir
+              optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
       securityContext:
         privileged: true
       script: |
+
+        if [[ -n "${GIT_PARENT_DIR}" ]]; then
+          cd "${GIT_PARENT_DIR}"
+        fi
+
+        if [[ -n "$(params.subdir)" ]]; then
+          cd "$(params.subdir)"
+        fi
+
+        if [[ "$(params.TLSVERIFY)" == "false" ]]; then
+          SKIPTLS="--skip-tls=true"
+        fi
+
+
         touch $(params.BUNDLE_CATALOG)
 
         BUNDLES=$(cat $(params.BUNDLE_CATALOG) | paste -sd "," -)
@@ -119,7 +141,7 @@ spec:
 
         set -x
 
-        opm index add --bundles "${BUNDLES}" --generate -d $(params.DOCKERFILE)
+        opm index add ${SKIPTLS} --bundles "${BUNDLES}" --generate -d $(params.DOCKERFILE)
     - name: build
       image: $(params.BUILDER_IMAGE)
       workingdir: $(params.source-dir)
@@ -136,12 +158,26 @@ spec:
               name: registry-access
               key: REGISTRY_PASSWORD
               optional: true
+        - name: GIT_PARENT_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: parentdir
+              optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
       securityContext:
         privileged: true
       script: |
+
+        if [[ -n "${GIT_PARENT_DIR}" ]]; then
+          cd "${GIT_PARENT_DIR}"
+        fi
+        if [[ -n "$(params.subdir)" ]]; then
+          cd "$(params.subdir)"
+        fi
+
         APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
         buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
         set +x

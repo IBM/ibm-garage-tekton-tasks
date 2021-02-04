@@ -15,11 +15,11 @@ spec:
       default: ""
     - name: version
       default: ""
-    - name: git-branch
-      default: ""
     - name: source-dir
       default: /source
     - name: subdir
+      default: ""
+    - name: parentdir
       default: ""
     - name: image-url
       default: ""
@@ -37,6 +37,10 @@ spec:
       image: $(params.tools-image)
       workingdir: $(params.source-dir)
       env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         - name: HOME
           value: /home/devops
         - name: GIT_USERNAME
@@ -63,6 +67,18 @@ spec:
               name: olm-catalog-secret
               key: password
               optional: true
+        - name: GIT_PARENT_DIR
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: parentdir
+              optional: true
+        - name: GIT_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: protocol
+              optional: true
         - name: GIT_HOST
           valueFrom:
             configMapKeyRef:
@@ -81,21 +97,41 @@ spec:
               name: olm-catalog-repo
               key: repo
               optional: true
+        - name: GIT_BRANCH
+          valueFrom:
+            configMapKeyRef:
+              name: olm-catalog-repo
+              key: branch
+              optional: true
       script: |
         #!/usr/bin/env bash
         set -ex
 
-        BRANCH_CMD=""
-        if [[ -n "$(params.git-branch)" ]]; then
-          BRANCH_CMD="-b $(params.app-name)"
-        fi
-
         APP_NAME="$(params.app-name)"
-        if [[ -z "${SUBDIR}" ]]; then
-          SUBDIR="$(params.app-name)"
-        fi
-        VERSION="$(params.version)"
 
+        if [[ -n "$(params.parentdir)" ]]; then
+          PARENT_DIR="$(params.parentdir)"
+        elif [[ -n "${GIT_PARENT_DIR}" ]] && [[ "${GIT_PARENT_DIR}" = "bash -c"* ]]; then
+          PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)
+        elif [[ -n "${GIT_PARENT_DIR}" ]]; then
+          PARENT_DIR="${GIT_PARENT_DIR}"
+        else
+          PARENT_DIR="."
+        fi
+
+        if [[ -n "$(params.subdir)" ]]; then
+          SUBDIR="${PARENT_DIR}/$(params.subdir)"
+        else
+          SUBDIR="${PARENT_DIR}"
+        fi
+
+
+        PROTOCOL="${GIT_PROTOCOL}"
+        if [[ -z "${PROTOCOL}" ]]; then
+          PROTOCOL="https"
+        fi
+
+        VERSION="$(params.version)"
         BUNDLE_URL="$(params.image-url)"
 
         if [[ -z "${GIT_HOST}" ]] || [[ -z "${GIT_ORG}" ]] || [[ -z "${GIT_REPO}" ]]; then
@@ -116,16 +152,25 @@ spec:
         fi
         set -x
 
+        BRANCH_CMD=""
+        if [[ -n "${GIT_BRANCH}" ]]; then
+          BRANCH_CMD="-b ${GIT_BRANCH}"
+        fi
+
         git config --global user.email "gitops@cloudnativetoolkit.dev"
         git config --global user.name "Cloud Native Toolkit Pipeline"
-        echo "Cloning repo: https://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        echo "git clone ${BRANCH_CMD} ${PROTOCOL}://${GIT_AUTH_USER}:xxxx@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
         set +x
-        GIT_URL="https://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
+        GIT_URL="${PROTOCOL}://${GIT_AUTH_USER}:${GIT_AUTH_PWD}@${GIT_HOST}/${GIT_ORG}/${GIT_REPO}"
         git clone ${BRANCH_CMD} ${GIT_URL} gitops_cd
         set -x
         cd gitops_cd
 
         BUNDLE_METADATA="bundles.txt"
+        if [[ -n "${SUBDIR}" ]]; then
+          # create directory
+          mkdir -p "${SUBDIR}"
+        fi
         if [[ -d "${SUBDIR}" ]]; then
           BUNDLE_METADATA="${SUBDIR}/${BUNDLE_METADATA}"
         fi
