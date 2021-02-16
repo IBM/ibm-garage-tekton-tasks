@@ -18,16 +18,10 @@ spec:
       default: /source
     - name: subdir
       default: ""
-    - name: image-server
-      default: ""
-    - name: image-namespace
-      default: ""
-    - name: image-repository
-      default: ""
-    - name: image-tag
+    - name: image-url
       default: ""
     - name: OPM_IMAGE
-      default: quay.io/ibmgaragecloud/operator-sdk:v0.6.0
+      default: quay.io/ibmgaragecloud/operator-sdk:v0.10.4
     - name: BUILDER_IMAGE
       default: quay.io/buildah/stable:v1.15.1
     - name: DOCKERFILE
@@ -35,7 +29,7 @@ spec:
     - name: CONTEXT
       default: .
     - name: TLSVERIFY
-      default: "false"
+      default: "true"
     - name: FORMAT
       default: "docker"
     - name: BUNDLE_CATALOG
@@ -122,10 +116,9 @@ spec:
           cd "$(params.subdir)"
         fi
 
-        if [[ "$(params.TLSVERIFY)" == "false" ]]; then
+        if [[ "$(params.TLSVERIFY)" == "false" ]] || [[ "${REGISTRY_URL}" == "image-registry.openshift-image-registry.svc:5000" ]]; then
           SKIPTLS="--skip-tls=true"
         fi
-
 
         touch $(params.BUNDLE_CATALOG)
 
@@ -178,12 +171,14 @@ spec:
           cd "$(params.subdir)"
         fi
 
-        APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
-        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
+        IMAGE_TO="$(params.image-url)"
+        REGISTRY_SERVER_TO=$(echo "${IMAGE_TO}" | awk -F / '{print $1}')
+
+        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${IMAGE_TO} $(params.CONTEXT)
         set +x
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
-          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
-          echo "buildah login -u "${REGISTRY_USER}" -p "xxxxx" "$(params.image-server)""
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ ! "${REGISTRY_SERVER_TO}" =~ ":" ]]; then
+          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" ${REGISTRY_SERVER_TO}
+          echo "buildah login -u "${REGISTRY_USER}" -p "xxxxx" ${REGISTRY_SERVER_TO}"
         fi
         set -x
-        buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+        buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${IMAGE_TO}

@@ -22,8 +22,10 @@ spec:
       default: "-bundle"
     - name: image-tag
       default: ""
+    - name: default-channel
+      default: "alpha"
     - name: BUNDLE_IMAGE
-      default: quay.io/ibmgaragecloud/operator-sdk:v0.6.0
+      default: quay.io/ibmgaragecloud/operator-sdk:v0.10.4
     - name: BUILDER_IMAGE
       default: quay.io/buildah/stable:v1.15.0
     - name: DOCKERFILE
@@ -105,6 +107,12 @@ spec:
         IMAGE_SERVER=$(echo "${BUNDLE_IMG}" | awk -F / '{print $1}')
 
         make bundle
+
+        # TODO missing default channel
+        echo "LABEL operators.operatorframework.io.bundle.channel.default.v1=$(params.default-channel)" >> $(params.DOCKERFILE)
+        cat $(params.DOCKERFILE)
+        echo "  operators.operatorframework.io.bundle.channel.default.v1: $(params.default-channel)" >> bundle/metadata/annotations.yaml
+        cat bundle/metadata/annotations.yaml
 
         podman --storage-driver=$(params.STORAGE_DRIVER) build --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${BUNDLE_IMG} $(params.CONTEXT)
         set +x
