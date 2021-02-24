@@ -107,7 +107,7 @@ spec:
               optional: true
       script: |
           #!/usr/bin/env bash
-          set -e
+          set -ex
 
           APP_NAME="$(params.app-name)"
           SUBDIR="$(params.subdir)"

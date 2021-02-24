@@ -19,7 +19,7 @@ spec:
     - name: app-name
       default: "my-java-gradle-app"
     - name: build-image
-      default: quay.io/ibmgaragecloud/operator-sdk:v0.6.0
+      default: quay.io/ibmgaragecloud/operator-sdk:v0.10.4
   volumes:
     - name: source
       emptyDir: {}
