@@ -252,6 +252,8 @@ spec:
 
           CHART_PATH="${CHART_ROOT}/${CHART_NAME}"
 
+          helm dep update "${CHART_PATH}"
+
           # Package Helm Chart
           helm package --version ${IMAGE_VERSION} ${CHART_PATH}
 

@@ -167,6 +167,8 @@ spec:
           cp ./values.yaml.tmp ${CHART_PATH}/values.yaml
           cat ${CHART_PATH}/values.yaml
 
+          helm dep update "${CHART_PATH}"
+
           # Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
           helm template ${RELEASE_NAME} ${CHART_PATH} \
               --namespace ${APP_NAMESPACE} \
