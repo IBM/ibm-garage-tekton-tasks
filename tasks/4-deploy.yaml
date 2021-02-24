@@ -120,7 +120,7 @@ spec:
           export CHART=$(find . -name 'Chart*.yaml')
           echo "CHART: $CHART"
 
-          export CHART_NAME=$(cat $CHART | awk '/name:/ {print $2}')
+          export CHART_NAME=$(cat $CHART | yq r - name)
           echo "CHART_NAME: $CHART_NAME"
 
           # Update Chart name and version
@@ -128,7 +128,6 @@ spec:
             echo "Renaming chart from ${CHART_NAME} to ${APP_NAME}"
             cp -R "${CHART_ROOT}/${CHART_NAME}" "${CHART_ROOT}/${APP_NAME}"
             cat "${CHART_ROOT}/${CHART_NAME}/Chart.yaml" | \
-                yq w - apiVersion "v1" | \
                 yq w - name "${APP_NAME}" | \
                 yq w - version "1.0.0-rc${IMAGE_VERSION}" > "${CHART_ROOT}/${APP_NAME}/Chart.yaml"
           else
@@ -145,25 +144,36 @@ spec:
           echo "CHECKING CHART (lint)"
           helm lint ${CHART_PATH}
 
+          PREFIX=""
+          if [[ -f "${CHART_PATH}/requirements.yaml" ]] || grep -Eq "^dependencies:" "${CHART_PATH}/Chart.yaml"; then
+              DEPENDENCY_FILE="${CHART_PATH}/Chart.yaml"
+              if [[ -f "${CHART_PATH}/requirements.yaml" ]]; then
+                  DEPENDENCY_FILE="${CHART_PATH}/requirements.yaml"
+              fi
+
+              PREFIX="$(yq r -j "${DEPENDENCY_FILE}" | jq -r '.dependencies | .[] | .alias // .name' | head -1)."
+          fi
 
           # Update helm chart with repository and tag values
           cat ${CHART_PATH}/values.yaml | \
-              yq w - nameOverride "${APP_NAME}" | \
-              yq w - fullnameOverride "${APP_NAME}" | \
-              yq w - vcsInfo.repoUrl "${GIT_URL}" | \
-              yq w - vcsInfo.branch "${GIT_REVISION}" | \
-              yq w - image.repository "${IMAGE_URL}" | \
-              yq w - --style single image.tag "${IMAGE_VERSION}" | \
-              yq w - ingress.enabled "${INGRESS_ENABLED}" | \
-              yq w - route.enabled "${ROUTE_ENABLED}" > ./values.yaml.tmp
+              yq w - "${PREFIX}nameOverride" "${APP_NAME}" | \
+              yq w - "${PREFIX}fullnameOverride" "${APP_NAME}" | \
+              yq w - "${PREFIX}vcsInfo.repoUrl" "${GIT_URL}" | \
+              yq w - "${PREFIX}vcsInfo.branch" "${GIT_REVISION}" | \
+              yq w - "${PREFIX}image.repository" "${IMAGE_URL}" | \
+              yq w - --style single "${PREFIX}image.tag" "${IMAGE_VERSION}" | \
+              yq w - "${PREFIX}ingress.enabled" "${INGRESS_ENABLED}" | \
+              yq w - "${PREFIX}route.enabled" "${ROUTE_ENABLED}" > ./values.yaml.tmp
           cp ./values.yaml.tmp ${CHART_PATH}/values.yaml
           cat ${CHART_PATH}/values.yaml
+
+          helm dep update "${CHART_PATH}"
 
           # Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
           helm template ${RELEASE_NAME} ${CHART_PATH} \
               --namespace ${APP_NAMESPACE} \
-              --set ingress.tlsSecretName="${TLS_SECRET_NAME}" \
-              --set ingress.subdomain="${INGRESS_SUBDOMAIN}" > ./release.yaml
+              --set ${PREFIX}ingress.tlsSecretName="${TLS_SECRET_NAME}" \
+              --set ${PREFIX}ingress.subdomain="${INGRESS_SUBDOMAIN}" > ./release.yaml
 
           echo -e "Generated release yaml for: ${APP_NAMESPACE}/${APP_NAME}"
           cat ./release.yaml
