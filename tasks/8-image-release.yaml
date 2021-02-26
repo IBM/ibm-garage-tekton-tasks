@@ -1,79 +1,144 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-img-release
+  name: ibm-img-scan-ibm
   annotations:
-    description: Tags the git repository and releases the intermediate container image with the version tag
-    app.openshift.io/description: Tags the git repository and releases the intermediate container image with the version tag
+    description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry
+    app.openshift.io/description: Checks the results for the Vulnerability Advisor scan if deploying images to IBM Container Registry
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
     app.openshift.io/vcs-ref: master
   labels:
-    version: 0.0.0
+    version: 0.0.0 
 spec:
   params:
-    - name: image-from
-      default: ""
-    - name: image-to
-      default: ""
-    - name: SKOPEO_IMAGE
-      default: quay.io/containers/skopeo:v1.1.0
-    - name: IMAGE_FROM_TLS_VERIFY
-      default: "true"
-    - name: IMAGE_TO_TLS_VERIFY
-      default: "true"
-  results:
     - name: image-url
-      description: The url of the image to be pushed
+      description: "The location of image to scan on IBM Container Registry <server>/<namespace>/<repository>:<tag>"
+    - name: scan-image
+      description: Flag indicating that a scan should be performed
+      default: "false"
+    - name: tools-image
+      default: garagecatalyst/ibmcloud-dev:1.1.3
   volumes:
-    - name: varlibcontainers
+    - name: source
       emptyDir: {}
   steps:
-    - name: image-tag
-      image: $(params.SKOPEO_IMAGE)
+    - name: scan-image
+      image: $(params.tools-image)
       env:
-        - name: REGISTRY_USER
+        - name: HOME
+          value: /home/devops
+        - name: IBM_CLOUD_APIKEY
           valueFrom:
             secretKeyRef:
-              name: ibmcloud-apikey
-              key: REGISTRY_USER
-              optional: true
-        - name: REGISTRY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: ibmcloud-apikey
               key: APIKEY
+              name: ibmcloud-apikey
               optional: true
-      volumeMounts:
-        - mountPath: /var/lib/containers
-          name: varlibcontainers
-      securityContext:
-        privileged: true
+        - name: IBM_CLOUD_RESOURCE_GROUP
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: RESOURCE_GROUP
+              optional: true
+        - name: IBM_CLOUD_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: REGION
+              optional: true
+        - name: SLACK_URL
+          valueFrom:
+            secretKeyRef: 
+              name: slack-access
+              key: slack-url
+              optional: false   
+        - name: SLACK_CHANNEL
+          valueFrom:
+            secretKeyRef: 
+              name: slack-access
+              key: slack-channel
+              optional: false                  
       script: |
-        IMAGE_FROM="$(params.image-from)"
-        REGISTRY_SERVER_FROM=$(echo "${IMAGE_FROM}" | awk -F / '{print $1}')
-        IMAGE_TO="$(params.image-to)"
-        REGISTRY_SERVER_TO=$(echo "${IMAGE_TO}" | awk -F / '{print $1}')
-        IMAGE_FROM_TLS_VERIFY=$(params.IMAGE_FROM_TLS_VERIFY)
-        IMAGE_TO_TLS_VERIFY=$(params.IMAGE_TO_TLS_VERIFY)
+          #!/usr/bin/env bash
+          set -ex
+          
+          IMAGE_URL=$(params.image-url)
+          REGISTRY_SERVER=$(echo $(params.image-url) | awk -F / '{print $1}')
+          PERFORM_SCAN="$(params.scan-image)"
+          if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
+            echo "User selected to skip scanning. Skipping Vulnerability Advisor validation."
+            curl -s -i -X POST --data-urlencode "payload={\"channel\": \"${SLACK_CHANNEL}\", \"username\": \"tekton-bot\", \"text\": \":attention-please: Skipping IBM Vulnerability Advisor Scan on image $(params.image-url). \", \"icon_emoji\": \":tekton:\"}" ${SLACK_URL}
+            exit 0
+          fi
+          if [[ ! "${REGISTRY_SERVER}" =~ icr.io ]]; then
+            echo "The image is not stored in the IBM Cloud Image Registry. Skipping Vulnerability Advisor validation"
+            exit 0
+          fi
+          echo -e "VA Security Scan image in registry"
+          echo "Registry URL: ${REGISTRY_SERVER}"
+ 
+          set +x
+          ibmcloud login --apikey ${IBM_CLOUD_APIKEY} -r ${IBM_CLOUD_REGION}
+          ibmcloud target -r ${IBM_CLOUD_REGION} 
 
-        echo "Tagging ${IMAGE_FROM} as ${IMAGE_TO}"
-        set +x
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ ! "${REGISTRY_SERVER_FROM}" =~ ":" ]]; then
-          IMAGE_FROM_CREDS="--src-creds ${REGISTRY_USER}:${REGISTRY_PASSWORD}"
-        fi
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ ! "${REGISTRY_SERVER_TO}" =~ ":" ]]; then
-          IMAGE_TO_CREDS="--dest-creds ${REGISTRY_USER}:${REGISTRY_PASSWORD}"
-        fi
-        set -x
-        if [[ "${REGISTRY_SERVER_FROM}" =~ ":" ]]; then
-          IMAGE_FROM_TLS_VERIFY="false"
-        fi
-        if [[ "${REGISTRY_SERVER_TO}" =~ ":" ]]; then
-          IMAGE_TO_TLS_VERIFY="false"
-        fi
-        
-        echo "skopeo copy --src-creds=xxxx --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} --dest-creds=xxxx --dest-tls-verify=${IMAGE_TO_TLS_VERIFY} docker://${IMAGE_FROM} docker://${IMAGE_TO}"
-        set +x
-        skopeo copy ${IMAGE_FROM_CREDS} --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} ${IMAGE_TO_CREDS} --dest-tls-verify=${IMAGE_TO_TLS_VERIFY} docker://${IMAGE_FROM} docker://${IMAGE_TO}
-        set -x
-        echo -n "${IMAGE_TO}" | tee $(results.image-url.path)
+          ibmcloud cr namespace-list
+          echo "Getting the current status of ${IMAGE_URL}"
+          #ibmcloud cr image-list
+
+          echo "Start querying, ..."
+
+          # original
+          #sleep 2m
+
+          # new
+          i=0
+          until [ $i -gt 10 ]
+          do
+            echo "probe: $i"
+            
+            #ibmcloud cr va ${IMAGE_URL} --output json > va-result.json
+            #cat va-result.json
+            #VA_STATUS=$(cat va-result.json | jq -r '.[].status')
+            #if [[ "${VA_STATUS}" == "INCOMPLETE" ]]; then
+            #  ((i=i+1))
+            #  sleep 15
+            #else
+            #  break
+            #fi
+
+            ibmcloud cr image-list > status.txt
+            cat status.txt
+            status=$(grep -i Scanning status.txt | wc -l)
+            if [ $status -eq 0 ]; then
+              break
+            else
+              sleep 15
+            fi
+
+            ((i=i+1))
+
+          done
+
+          ibmcloud cr va ${IMAGE_URL} --output json > va-result.json
+          cat va-result.json
+          VA_STATUS=$(cat va-result.json | jq -r '.[].status')
+          echo "VA scan status: ${VA_STATUS}"
+          if [[ "${VA_STATUS}" == "OK" ]]; then
+            echo "VA - No Issues in the image"
+            curl -s -X POST --data-urlencode "payload={\"channel\": \"${SLACK_CHANNEL}\", \"username\": \"tekton-bot\", \"text\": \":check-carbon: No vulnerability issues found in $(params.image-url) by IBM VA. \", \"icon_emoji\": \":tekton:\"}" ${SLACK_URL}
+            exit 0
+          elif [[ $(cat va-result.json | jq -r '.[].vulnerabilities | length') -gt 0 ]]; then
+            MESSAGE="IBM Container Registry Vulnerability Advisor scan result: $(cat va-result.json | jq -r '.[].vulnerabilities | length') vulnerabilities found in image $(params.image-url)"
+            echo $MESSAGE
+            curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${SLACK_CHANNEL}\", \"username\": \"tekton-bot\", \"text\": \":working-8053: $MESSAGE \", \"icon_emoji\": \":tekton:\"}" ${SLACK_URL}
+            #cat va-result.json | jq -r '.[].vulnerabilities'
+            #echo "Login to IBM container registry for details"
+            exit 1
+            #exit 0
+          elif [[ $(cat va-result.json | jq -r '.[].configuration_issues | length') -gt 0 ]]; then
+            echo "VA Warning - $(cat va-result.json | jq -r '.[].configuration_issues | length') configuration issues found in the image"
+            cat va-result.json | jq -r '.[].configuration_issues'
+            exit 0
+          else
+            echo "VA Warning: non-OK status from Vulnerability Advisor ${VA_STATUS}"
+            cat va-result.json | jq -r '.[]'
+          fi
