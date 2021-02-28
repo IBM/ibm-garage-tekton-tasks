@@ -8,7 +8,7 @@ metadata:
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
     app.openshift.io/vcs-ref: master
   labels:
-    version: 0.0.0
+    version: 0.0.0 
 spec:
   params:
     - name: image-url
@@ -26,7 +26,7 @@ spec:
   stepTemplate:
     volumeMounts:
       - name: source
-        mountPath: $(params.source-dir)
+        mountPath: $(params.source-dir)      
   steps:
     - name: scan-image
       image: $(params.tools-image)
@@ -46,60 +46,95 @@ spec:
               name: ibmcloud-config
               key: REGION
               optional: true
+        - name: SLACK_URL
+          valueFrom:
+            secretKeyRef: 
+              name: slack-access
+              key: slack-url
+              optional: false   
+        - name: SLACK_CHANNEL
+          valueFrom:
+            secretKeyRef: 
+              name: slack-access
+              key: slack-channel
+              optional: false                  
       script: |
           #!/usr/bin/env bash
           set -ex
-
+          
           IMAGE_URL=$(params.image-url)
           REGISTRY_SERVER=$(echo $(params.image-url) | awk -F / '{print $1}')
           PERFORM_SCAN="$(params.scan-image)"
-
           if [[ "${PERFORM_SCAN}" == "false" ]] || [[ -z "${PERFORM_SCAN}" ]]; then
             echo "User selected to skip scanning. Skipping Vulnerability Advisor validation."
+            curl -s -i -X POST --data-urlencode "payload={\"channel\": \"${SLACK_CHANNEL}\", \"username\": \"tekton-bot\", \"text\": \":attention-please: Skipping IBM Vulnerability Advisor Scan on image $(params.image-url). \", \"icon_emoji\": \":tekton:\"}" ${SLACK_URL}
             exit 0
           fi
           if [[ ! "${REGISTRY_SERVER}" =~ icr.io ]]; then
             echo "The image is not stored in the IBM Cloud Image Registry. Skipping Vulnerability Advisor validation"
             exit 0
           fi
-
-
           echo -e "VA Security Scan image in registry"
-
           echo "Registry URL: ${REGISTRY_SERVER}"
-
+ 
           set +x
           ibmcloud login --apikey ${IBM_CLOUD_APIKEY} -r ${IBM_CLOUD_REGION}
-          ibmcloud target -r ${IBM_CLOUD_REGION}
-          set -x
+          ibmcloud target -r ${IBM_CLOUD_REGION} 
+
           ibmcloud cr namespace-list
+          echo "Getting the current status of ${IMAGE_URL}"
+          #ibmcloud cr image-list
 
-          echo "Getting the VA status of ${IMAGE_URL}"
+          echo "Start querying, ..."
 
-          set +e
-          ibmcloud cr va ${IMAGE_URL} --output json | grep -i "Try again later"
-          retry=$?
-          while [ $retry -eq 0 ]; do
-            sleep 30
-            echo "Trying again to see if scan is done"
-            ibmcloud cr va ${IMAGE_URL} --output json | grep -i "Try again later"
-            retry=$?
+          # original
+          #sleep 2m
+
+          # new
+          i=0
+          until [ $i -gt 10 ]
+          do
+            echo "probe: $i"
+            
+            #ibmcloud cr va ${IMAGE_URL} --output json > va-result.json
+            #cat va-result.json
+            #VA_STATUS=$(cat va-result.json | jq -r '.[].status')
+            #if [[ "${VA_STATUS}" == "INCOMPLETE" ]]; then
+            #  ((i=i+1))
+            #  sleep 15
+            #else
+            #  break
+            #fi
+
+            ibmcloud cr image-list > status.txt
+            cat status.txt
+            status=$(grep -i Scanning status.txt | wc -l)
+            if [ $status -eq 0 ]; then
+              break
+            else
+              sleep 15
+            fi
+
+            ((i=i+1))
+
           done
-          set -e
-          ibmcloud cr va ${IMAGE_URL} --output json
-          echo "Saving results to va-result.json"
+
           ibmcloud cr va ${IMAGE_URL} --output json > va-result.json
+          cat va-result.json
           VA_STATUS=$(cat va-result.json | jq -r '.[].status')
-
           echo "VA scan status: ${VA_STATUS}"
-
           if [[ "${VA_STATUS}" == "OK" ]]; then
             echo "VA - No Issues in the image"
+            curl -s -X POST --data-urlencode "payload={\"channel\": \"${SLACK_CHANNEL}\", \"username\": \"tekton-bot\", \"text\": \":check-carbon: No vulnerability issues found in $(params.image-url) by IBM VA. \", \"icon_emoji\": \":tekton:\"}" ${SLACK_URL}
             exit 0
           elif [[ $(cat va-result.json | jq -r '.[].vulnerabilities | length') -gt 0 ]]; then
-            echo "VA Failure: $(cat va-result.json | jq -r '.[].vulnerabilities | length') vulnerabilities found in the image"
-            cat va-result.json | jq -r '.[].vulnerabilities'
+            MESSAGE="IBM Container Registry Vulnerability Advisor scan result: $(cat va-result.json | jq -r '.[].vulnerabilities | length') vulnerabilities found in image $(params.image-url)"
+            echo $MESSAGE
+            curl -s -S -X POST --data-urlencode "payload={\"channel\": \"${SLACK_CHANNEL}\", \"username\": \"tekton-bot\", \"text\": \":working-8053: $MESSAGE \", \"icon_emoji\": \":tekton:\"}" ${SLACK_URL}
+            #cat va-result.json | jq -r '.[].vulnerabilities'
+            #echo "Login to IBM container registry for details"
             exit 1
+            #exit 0
           elif [[ $(cat va-result.json | jq -r '.[].configuration_issues | length') -gt 0 ]]; then
             echo "VA Warning - $(cat va-result.json | jq -r '.[].configuration_issues | length') configuration issues found in the image"
             cat va-result.json | jq -r '.[].configuration_issues'
