@@ -62,7 +62,11 @@ spec:
       default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
     - name: js-image
       default: quay.io/ibmgaragecloud/node:lts-stretch
+    - name: api-basepath
+      description: Set basepath for REST API
+      default: "/"
   results:
+    - name: api-basepath
     - name: git-url
     - name: git-revision
     - name: source-dir
@@ -147,6 +151,7 @@ spec:
         echo -n "$(params.health-curl)">$(results.health-curl.path)
         echo -n "$(params.tools-image)">$(results.tools-image.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
+        echo -n "$(params.api-basepath)">$(results.api-basepath.path)
 
 
         REGISTRY_SERVER="$(params.image-server)"
