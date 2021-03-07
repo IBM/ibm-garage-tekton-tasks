@@ -1,0 +1,102 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-hadolint
+  annotations:
+    description: Optional linter for Dockerfiles; if a ".hadolint" file is in the repo root, this task automatically picks up; otherwise hadolint file name must be passed via ConfigMap. See Hadolint on Dockerhub for more
+    app.openshift.io/description: Optional linter for Dockerfiles; if a ".hadolint" file is in the repo root, this task automatically picks up; otherwise hadolint file name must be passed via ConfigMap
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+    - name: git-revision
+      default: master
+    - name: source-dir
+      default: /source
+    - name: DOCKERFILE
+      default: Dockerfile
+    - name: CONTEXT
+      default: .
+    - name: LINT_IMAGE
+      default: hadolint/hadolint
+    - name: lint-dockerfile
+      default: "true"
+
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: git-clone
+      image: alpine/git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: password
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: git-credentials
+              key: username
+              optional: true
+      script: |
+        set +x
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.git-url) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.git-revision)
+    - name: lint
+      image: $(params.LINT_IMAGE)
+      workingdir: $(params.source-dir)      
+      env:
+        - name: HADOLINT_CFG
+          valueFrom:
+            configMapKeyRef:
+              name: hadolint-config
+              key: HADOLINT_CFG
+              optional: true
+      script: | 
+        set +x
+        PERFORM_LINT="$(params.lint-dockerfile)"
+        if [[ "${PERFORM_LINT}" == "false" ]] || [[ -z "${PERFORM_LINT}" ]]; then
+          echo "User selected to skip Dockerfile linting. Skipping this task."
+          exit 0
+        fi
+        
+        FILE="$(params.source-dir)"/.hadolint.yaml
+
+        if [ -f "${HADOLINT_CFG}" ]; then
+          FILE="$(params.source-dir)/${HADOLINT_CFG}"
+          echo "In this step, hadolint will lint your Dockerfile, using ${FILE}, with the following rules: "
+          cat ${FILE}
+          echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
+          hadolint --config ${HADOLINT_CFG} $(params.DOCKERFILE)
+
+        elif [ -f "${FILE}" ]; then
+          echo "In this step, hadolint will lint your Dockerfile, using .hadolint.yaml in your repository, with the following rules: "
+          cat "${FILE}"
+          echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
+          hadolint $(params.DOCKERFILE)
+        
+        else
+          echo "In this step, hadolint will lint your Dockerfile" 
+          echo "If you would like to configure hadolint, please see https://github.com/hadolint/hadolint"
+          echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
+          hadolint $(params.DOCKERFILE)
+        fi
+        
+        set -x

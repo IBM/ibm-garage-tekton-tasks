@@ -65,6 +65,9 @@ spec:
     - name: api-basepath
       description: Set basepath for REST API
       default: "/"
+    - name: lint-dockerfile
+      description: Flag indication that Dockerfile will be linted
+      default: "true"
   results:
     - name: api-basepath
     - name: git-url
@@ -88,6 +91,7 @@ spec:
     - name: scan-image
     - name: scan-trivy
     - name: scan-ibm
+    - name: dockerfile-lint
   volumes:
     - name: source
       emptyDir: {}
@@ -207,7 +211,6 @@ spec:
         echo -n "${REGISTRY_TAG}">$(results.image-tag.path)
         echo -n "${REGISTRY_SERVER}/${REGISTRY_NAMESPACE}/${REGISTRY_REPOSITORY}:${REGISTRY_TAG}">$(results.image-url.path)
 
-
         if [[ -z "$(params.app-namespace)" ]]; then
           # Assume current namespace
           echo -n "${NAMESPACE}">$(results.app-namespace.path)
@@ -264,5 +267,8 @@ spec:
         echo -n "${PERFORM_SCAN}">$(results.scan-image.path)
         echo -n "${PERFORM_SCAN_TRIVY}">$(results.scan-trivy.path)
         echo -n "${PERFORM_SCAN_IBM}">$(results.scan-ibm.path)
+
+        PERFORM_LINT="$(params.lint-dockerfile)"
+        echo -n "${PERFORM_LINT}">$(results.dockerfile-lint.path)
 
         for f in /tekton/results/*; do echo "results.$(basename $f)=$(cat $f)"; done
