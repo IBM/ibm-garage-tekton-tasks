@@ -27,6 +27,8 @@ spec:
       default: "-k"
     - name: tools-image
       default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    - name: api-basepath
+      default: /
   steps:
     - name: health-check
       image: $(params.tools-image)
@@ -43,6 +45,7 @@ spec:
             PROTOCOL="$(params.health-protocol)"
             INGRESS_TYPE="$(params.deploy-ingress-type)"
             HEALTH_ENDPOINT="$(params.health-endpoint)"
+            API_BASEPATH="$(params.api-basepath)"
 
             if [[ "${INGRESS_TYPE}" == "route" ]]; then
                 HOST=$(kubectl get route/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.host }')
@@ -56,7 +59,7 @@ spec:
                 fi
             fi
 
-            URL="${PROTOCOL}://${HOST}${HEALTH_ENDPOINT}"
+            URL="${PROTOCOL}://${HOST}${API_BASEPATH}${HEALTH_ENDPOINT}"
 
           fi
 
@@ -69,9 +72,9 @@ spec:
               echo "Health check failure. Remaining retries: $sleep_countdown"
               sleep_countdown=$((sleep_countdown-1))
               if [[ $sleep_countdown -eq 0 ]]; then
-                      echo "Could not reach health endpoint: ${URL}/health"
+                      echo "Could not reach health endpoint: ${URL}"
                       exit 1;
               fi
           done
-          echo "Successfully reached health endpoint: ${URL}/health"
+          echo "Successfully reached health endpoint: ${URL}"
           echo "====================================================================="
