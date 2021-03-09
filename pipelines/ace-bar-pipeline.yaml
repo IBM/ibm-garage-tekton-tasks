@@ -1,0 +1,183 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ibm-ace-bar
+  annotations:
+    app.openshift.io/runtime: ace
+    app.openshift.io/builder: bar
+spec:
+  params:
+  - description: The url for the git repository
+    name: git-url
+    type: string
+  - default: main
+    description: The git revision (branch, tag, or sha) that should be built
+    name: git-revision
+    type: string
+  - default: "true"
+    description: Enable the pipeline to scan the image for vulnerabilities
+    name: scan-image
+    type: string
+  tasks:
+  - name: setup
+    params:
+    - name: git-url
+      value: $(params.git-url)
+    - name: git-revision
+      value: $(params.git-revision)
+    - name: scan-image
+      value: $(params.scan-image)
+    taskRef:
+      kind: Task
+      name: ibm-setup-ace-bar
+  - name: build
+    params:
+    - name: git-url
+      value: $(tasks.setup.results.git-url)
+    - name: git-revision
+      value: $(tasks.setup.results.git-revision)
+    - name: source-dir
+      value: $(tasks.setup.results.source-dir)
+    - name: image-server
+      value: $(tasks.setup.results.image-server)
+    - name: image-namespace
+      value: $(tasks.setup.results.image-namespace)
+    - name: image-repository
+      value: $(tasks.setup.results.image-repository)
+    - name: image-tag
+      value: $(tasks.setup.results.image-tag)
+    - name: app-name
+      value: $(tasks.setup.results.app-name)
+    - name: ace-project
+      value: $(tasks.setup.results.ace-project)
+    runAfter:
+    - setup
+    taskRef:
+      kind: Task
+      name: ibm-build-tag-push-ace-bar
+  - name: deploy
+    params:
+    - name: git-url
+      value: $(tasks.setup.results.git-url)
+    - name: git-revision
+      value: $(tasks.setup.results.git-revision)
+    - name: source-dir
+      value: $(tasks.setup.results.source-dir)
+    - name: image-server
+      value: $(tasks.setup.results.image-server)
+    - name: image-namespace
+      value: $(tasks.setup.results.image-namespace)
+    - name: image-repository
+      value: $(tasks.setup.results.image-repository)
+    - name: image-tag
+      value: $(tasks.setup.results.image-tag)
+    - name: app-namespace
+      value: $(tasks.setup.results.app-namespace)
+    - name: app-name
+      value: $(tasks.setup.results.app-name)
+    - name: deploy-ingress-type
+      value: $(tasks.setup.results.deploy-ingress-type)
+    - name: tools-image
+      value: $(tasks.setup.results.tools-image)
+    runAfter:
+    - build
+    taskRef:
+      kind: Task
+      name: ibm-deploy-ace-bar
+  - name: health
+    params:
+    - name: app-namespace
+      value: $(tasks.setup.results.app-namespace)
+    - name: app-name
+      value: $(tasks.setup.results.app-name)
+    - name: deploy-ingress-type
+      value: $(tasks.setup.results.deploy-ingress-type)
+    - name: health-protocol
+      value: $(tasks.setup.results.health-protocol)
+    - name: health-endpoint
+      value: $(tasks.setup.results.health-endpoint)
+    - name: health-url
+      value: $(tasks.setup.results.health-url)
+    - name: health-curl
+      value: $(tasks.setup.results.health-curl)
+    - name: tools-image
+      value: $(tasks.setup.results.tools-image)
+    runAfter:
+    - deploy
+    taskRef:
+      kind: Task
+      name: ibm-health-check-ace-bar
+  - name: tag-release
+    params:
+    - name: git-url
+      value: $(tasks.setup.results.git-url)
+    - name: git-revision
+      value: $(tasks.setup.results.git-revision)
+    - name: source-dir
+      value: $(tasks.setup.results.source-dir)
+    - name: js-image
+      value: $(tasks.setup.results.js-image)
+    runAfter:
+    - health
+    taskRef:
+      kind: Task
+      name: ibm-tag-release
+  - name: img-release
+    params:
+    - name: image-from
+      value: $(tasks.setup.results.image-url)
+    - name: image-to
+      value: $(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)
+    runAfter:
+    - tag-release
+    taskRef:
+      kind: Task
+      name: ibm-img-release
+  - name: img-scan
+    params:
+    - name: image-url
+      value: $(tasks.img-release.results.image-url)
+    - name: scan-trivy
+      value: $(tasks.setup.results.scan-trivy)
+    - name: scan-ibm
+      value: $(tasks.setup.results.scan-ibm)
+    runAfter:
+    - img-release
+    taskRef:
+      kind: Task
+      name: ibm-img-scan
+  - name: helm-release
+    taskRef:
+      name: ibm-helm-release
+    runAfter:
+      - img-scan
+    params:
+      - name: git-url
+        value: "$(tasks.setup.results.git-url)"
+      - name: git-revision
+        value: "$(tasks.setup.results.git-revision)"
+      - name: source-dir
+        value: "$(tasks.setup.results.source-dir)"
+      - name: image-url
+        value: "$(tasks.img-release.results.image-url)"
+      - name: app-name
+        value: "$(tasks.setup.results.app-name)"
+      - name: deploy-ingress-type
+        value: "$(tasks.setup.results.deploy-ingress-type)"
+      - name: tools-image
+        value: "$(tasks.setup.results.tools-image)"
+  - name: gitops
+    params:
+    - name: app-name
+      value: $(tasks.setup.results.app-name)
+    - name: version
+      value: $(tasks.tag-release.results.tag)
+    - name: helm-url
+      value: $(tasks.helm-release.results.helm-url)
+    - name: tools-image
+      value: $(tasks.setup.results.tools-image)
+    runAfter:
+    - helm-release
+    taskRef:
+      kind: Task
+      name: ibm-gitops-ace-bar
