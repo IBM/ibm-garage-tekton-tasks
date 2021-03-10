@@ -22,6 +22,8 @@ spec:
       default: "false"
     - name: TRIVY_IMAGE
       default: quay.io/ibmgaragecloud/aquasec-trivy
+    - name: TRIVY_SEVERITY
+      default: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
   volumes:
     - name: oci-image
       emptyDir: {}
@@ -83,12 +85,12 @@ spec:
           PATH_TO_IMAGE="/var/oci/image"
           echo -e "Trivy Security Scan image in registry"
           trivy image --exit-code 0 --input ${PATH_TO_IMAGE}
-          trivy image --exit-code 1 --severity CRITICAL --input ${PATH_TO_IMAGE}
+          trivy image --exit-code 1 --severity $(params.TRIVY_SEVERITY) --input ${PATH_TO_IMAGE}
           my_exit_code=$?
           echo "Scan exit code :--- $my_exit_code"
           if [ ${my_exit_code} == 1 ]; then
-              echo "Trivy scanning completed. CRITICAL Vulnerabilities found."
+              echo "Trivy scanning completed. $(params.TRIVY_SEVERITY) Vulnerabilities found."
               exit 1
           else
-            echo "Trivy scanning completed. CRITICAL vulnerabilities not found."
+            echo "Trivy scanning completed. $(params.TRIVY_SEVERITY) vulnerabilities not found."
           fi
