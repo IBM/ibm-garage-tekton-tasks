@@ -15,9 +15,9 @@ spec:
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "true"
-    - name: api-basepath
-      default: "/"
-      description: Set the basepath for the REST API
+    - name: health-endpoint
+      default: "/health"
+      description: Endpoint to check health after deployment, liberty uses / not /health
     - name: lint-dockerfile
       description: Enable the pipeline to lint the Dockerfile for best practices
       default: "true"
@@ -32,8 +32,8 @@ spec:
           value: $(params.git-revision)
         - name: scan-image
           value: $(params.scan-image)
-        - name: api-basepath
-          value: $(params.api-basepath)
+        - name: health-endpoint
+          value: $(params.health-endpoint)
         - name: lint-dockerfile
           value: $(params.lint-dockerfile)
     - name: test
@@ -134,8 +134,6 @@ spec:
           value: "$(tasks.setup.results.health-curl)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
-        - name: api-basepath
-          value: $(tasks.setup.results.api-basepath)
     - name: pact-verify
       taskRef:
         name: ibm-gradle-pact-verify
