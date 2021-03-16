@@ -27,8 +27,6 @@ spec:
       default: "-k"
     - name: tools-image
       default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
-    - name: api-basepath
-      default: /
   steps:
     - name: health-check
       image: $(params.tools-image)
@@ -45,7 +43,6 @@ spec:
             PROTOCOL="$(params.health-protocol)"
             INGRESS_TYPE="$(params.deploy-ingress-type)"
             HEALTH_ENDPOINT="$(params.health-endpoint)"
-            API_BASEPATH="$(params.api-basepath)"
 
             if [[ "${INGRESS_TYPE}" == "route" ]]; then
                 HOST=$(kubectl get route/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.host }')
@@ -59,7 +56,7 @@ spec:
                 fi
             fi
 
-            URL="${PROTOCOL}://${HOST}${API_BASEPATH}${HEALTH_ENDPOINT}"
+            URL="${PROTOCOL}://${HOST}${HEALTH_ENDPOINT}"
 
           fi
 
