@@ -21,6 +21,9 @@ spec:
     - name: java-bin-path
       description: The path to the java binaries. The default value is "target"
       default: target
+    - name: lint-dockerfile
+      description: Enable the pipeline to lint the Dockerfile for best practices
+      default: "true"
   tasks:
     - name: setup
       taskRef:
@@ -34,6 +37,8 @@ spec:
           value: $(params.scan-image)
         - name: health-endpoint
           value: $(params.health-endpoint)
+        - name: lint-dockerfile
+          value: $(params.lint-dockerfile)
     - name: test
       taskRef:
         name: ibm-java-maven-test
@@ -50,11 +55,25 @@ spec:
           value: "$(tasks.setup.results.app-name)"
         - name: sonarqube-java-bin-path
           value: "$(params.java-bin-path)"
+    - name: hadolint
+      taskRef:
+        name: ibm-hadolint
+      runAfter:
+        - test
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
+        - name: lint-dockerfile
+          value: "$(tasks.setup.results.dockerfile-lint)"
     - name: build
       taskRef:
         name: ibm-build-tag-push
       runAfter:
-        - test
+        - hadolint
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
