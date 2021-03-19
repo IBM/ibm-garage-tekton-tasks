@@ -65,7 +65,6 @@ spec:
     - name: lint-dockerfile
       description: Flag indication that Dockerfile will be linted
       default: "true"
-
   results:
     - name: git-url
     - name: git-revision

@@ -15,6 +15,9 @@ spec:
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "true"
+    - name: health-endpoint
+      default: "/health"
+      description: Endpoint to check health after deployment, liberty uses / not /health
     - name: lint-dockerfile
       description: Enable the pipeline to lint the Dockerfile for best practices
       default: "true"
@@ -29,6 +32,8 @@ spec:
           value: $(params.git-revision)
         - name: scan-image
           value: $(params.scan-image)
+        - name: health-endpoint
+          value: $(params.health-endpoint)
         - name: lint-dockerfile
           value: $(params.lint-dockerfile)
     - name: test

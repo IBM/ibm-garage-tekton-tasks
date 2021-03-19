@@ -69,9 +69,9 @@ spec:
               echo "Health check failure. Remaining retries: $sleep_countdown"
               sleep_countdown=$((sleep_countdown-1))
               if [[ $sleep_countdown -eq 0 ]]; then
-                      echo "Could not reach health endpoint: ${URL}/health"
+                      echo "Could not reach health endpoint: ${URL}"
                       exit 1;
               fi
           done
-          echo "Successfully reached health endpoint: ${URL}/health"
+          echo "Successfully reached health endpoint: ${URL}"
           echo "====================================================================="
