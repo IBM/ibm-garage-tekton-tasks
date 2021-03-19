@@ -62,6 +62,8 @@ spec:
       default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
     - name: js-image
       default: quay.io/ibmgaragecloud/node:lts-stretch
+    - name: ace-project
+      default: ""
   results:
     - name: git-url
     - name: git-revision
@@ -84,6 +86,7 @@ spec:
     - name: scan-image
     - name: scan-trivy
     - name: scan-ibm
+    - name: ace-project
   volumes:
     - name: source
       emptyDir: {}
@@ -259,5 +262,11 @@ spec:
         echo -n "${PERFORM_SCAN}">$(results.scan-image.path)
         echo -n "${PERFORM_SCAN_TRIVY}">$(results.scan-trivy.path)
         echo -n "${PERFORM_SCAN_IBM}">$(results.scan-ibm.path)
+
+        if [[ -d workspace ]]; then
+          # Retrieve name of ACE Toolkit project
+          ACE_PROJECT=$(ls workspace)
+        fi
+        echo -n "${ACE_PROJECT}">$(results.ace-project.path)
 
         for f in /tekton/results/*; do echo "results.$(basename $f)=$(cat $f)"; done

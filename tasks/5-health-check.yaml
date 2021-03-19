@@ -27,6 +27,8 @@ spec:
       default: "-k"
     - name: tools-image
       default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    - name: resource-type
+      default: ""
   steps:
     - name: health-check
       image: $(params.tools-image)
@@ -44,7 +46,14 @@ spec:
             INGRESS_TYPE="$(params.deploy-ingress-type)"
             HEALTH_ENDPOINT="$(params.health-endpoint)"
 
-            if [[ "${INGRESS_TYPE}" == "route" ]]; then
+            echo "resource-type: $(params.resource-type)"
+
+            if [[ "$(params.resource-type)" == *"integrationserver"* ]]; then
+                HOST=$(kubectl get route/${APP_NAME}-${PROTOCOL} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.host }')
+                if [[ -z "${PROTOCOL}" ]]; then
+                  PROTOCOL="https"
+                fi
+            elif [[ "${INGRESS_TYPE}" == "route" ]]; then
                 HOST=$(kubectl get route/${APP_NAME} --namespace ${APP_NAMESPACE} --output=jsonpath='{ .spec.host }')
                 if [[ -z "${PROTOCOL}" ]]; then
                   PROTOCOL="https"

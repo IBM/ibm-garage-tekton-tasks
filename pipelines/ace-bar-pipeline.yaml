@@ -18,6 +18,9 @@ spec:
     description: Enable the pipeline to scan the image for vulnerabilities
     name: scan-image
     type: string
+  - name: health-endpoint
+    default: "/health"
+    description: Endpoint to check health after deployment, liberty uses / not /health
   tasks:
   - name: setup
     params:
@@ -27,9 +30,13 @@ spec:
       value: $(params.git-revision)
     - name: scan-image
       value: $(params.scan-image)
+    - name: health-endpoint
+      value: $(params.health-endpoint)
+    - name: health-protocol
+      value: "http"
     taskRef:
       kind: Task
-      name: ibm-setup-ace-bar
+      name: ibm-setup
   - name: build
     params:
     - name: git-url
@@ -83,7 +90,7 @@ spec:
     - build
     taskRef:
       kind: Task
-      name: ibm-deploy-ace-bar
+      name: ibm-deploy
   - name: health
     params:
     - name: app-namespace
@@ -102,11 +109,13 @@ spec:
       value: $(tasks.setup.results.health-curl)
     - name: tools-image
       value: $(tasks.setup.results.tools-image)
+    - name: resource-type
+      value: $(tasks.deploy.results.resource-type)
     runAfter:
     - deploy
     taskRef:
       kind: Task
-      name: ibm-health-check-ace-bar
+      name: ibm-health-check
   - name: tag-release
     params:
     - name: git-url
@@ -180,4 +189,4 @@ spec:
     - helm-release
     taskRef:
       kind: Task
-      name: ibm-gitops-ace-bar
+      name: ibm-gitops
