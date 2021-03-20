@@ -65,6 +65,9 @@ spec:
     - name: ace-project
       description: Name of the ACE Toolkit project
       default: ""
+    - name: lint-dockerfile
+      description: Flag indication that Dockerfile will be linted
+      default: "true"
   results:
     - name: git-url
     - name: git-revision
@@ -88,6 +91,7 @@ spec:
     - name: scan-trivy
     - name: scan-ibm
     - name: ace-project
+    - name: dockerfile-lint
   volumes:
     - name: source
       emptyDir: {}
@@ -207,7 +211,6 @@ spec:
         echo -n "${REGISTRY_TAG}">$(results.image-tag.path)
         echo -n "${REGISTRY_SERVER}/${REGISTRY_NAMESPACE}/${REGISTRY_REPOSITORY}:${REGISTRY_TAG}">$(results.image-url.path)
 
-
         if [[ -z "$(params.app-namespace)" ]]; then
           # Assume current namespace
           echo -n "${NAMESPACE}">$(results.app-namespace.path)
@@ -271,5 +274,7 @@ spec:
           echo -n "${ACE_PROJECT}">$(results.ace-project.path)
         fi
 
+        PERFORM_LINT="$(params.lint-dockerfile)"
+        echo -n "${PERFORM_LINT}">$(results.dockerfile-lint.path)
 
         for f in /tekton/results/*; do echo "results.$(basename $f)=$(cat $f)"; done

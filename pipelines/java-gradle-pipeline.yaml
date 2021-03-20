@@ -15,6 +15,12 @@ spec:
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "true"
+    - name: health-endpoint
+      default: "/health"
+      description: Endpoint to check health after deployment, liberty uses / not /health
+    - name: lint-dockerfile
+      description: Enable the pipeline to lint the Dockerfile for best practices
+      default: "true"
   tasks:
     - name: setup
       taskRef:
@@ -26,6 +32,10 @@ spec:
           value: $(params.git-revision)
         - name: scan-image
           value: $(params.scan-image)
+        - name: health-endpoint
+          value: $(params.health-endpoint)
+        - name: lint-dockerfile
+          value: $(params.lint-dockerfile)
     - name: test
       taskRef:
         name: ibm-java-gradle-test
@@ -40,11 +50,25 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: app-name
           value: "$(tasks.setup.results.app-name)"
+    - name: hadolint
+      taskRef:
+        name: ibm-hadolint
+      runAfter:
+        - test
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
+        - name: lint-dockerfile
+          value: "$(tasks.setup.results.dockerfile-lint)"
     - name: build
       taskRef:
         name: ibm-build-tag-push
       runAfter:
-        - test
+        - hadolint
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
