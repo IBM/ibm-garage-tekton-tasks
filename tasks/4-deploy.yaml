@@ -34,6 +34,7 @@ spec:
       default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
   results:
     - name: service-port
+    - name: resource-type
   volumes:
     - name: source
       emptyDir: {}
@@ -182,16 +183,22 @@ spec:
           kubectl apply -n ${APP_NAMESPACE} -f ./release.yaml --validate=false > results.out
           cat results.out
           echo "Waiting for rollout of ${APP_NAMESPACE}/${APP_NAME}"
+
+
           cat results.out | \
-            grep -E "deployment|statefulset" | \
+            grep -E "deployment|statefulset|integrationserver" | \
             sed "s/deployment.apps/deployment/g" | \
             sed "s/statefulset.apps/statefulset/g" | \
             sed "s/configured//g" | \
             sed "s/created//g" | \
             sed "s/unchanged//g" | while read target; do
             echo "Waiting for rollout of ${target} in ${APP_NAMESPACE}"
-            kubectl rollout status -n ${APP_NAMESPACE} ${target}
+            if [[ ${target} == *"integrationserver"* ]]; then
+              kubectl wait --timeout=-1s --for=condition=Ready ${target}
+            else
+              kubectl rollout status -n ${APP_NAMESPACE} ${target}
+              SERVICE_PORT=$(kubectl get svc "${APP_NAME}" -n "${APP_NAMESPACE}" -o jsonpath="{.spec.ports[?(@.name == 'http')].port}")
+              echo -n "${SERVICE_PORT}" | tee $(results.service-port.path)
+            fi
+            echo -n "${target}" | cut -f1 -d / | tee $(results.resource-type.path)
           done
-          SERVICE_PORT=$(kubectl get svc "${APP_NAME}" -n "${APP_NAMESPACE}" -o jsonpath="{.spec.ports[?(@.name == 'http')].port}")
-          echo -n "${SERVICE_PORT}" | tee $(results.service-port.path)
-
