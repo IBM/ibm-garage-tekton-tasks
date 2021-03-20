@@ -21,6 +21,9 @@ spec:
   - name: health-endpoint
     default: "/health"
     description: Endpoint to check health after deployment, liberty uses / not /health
+  - name: ace-project
+    description: Name of the ACE Toolkit project
+    default: ""
   tasks:
   - name: setup
     params:
@@ -34,6 +37,8 @@ spec:
       value: $(params.health-endpoint)
     - name: health-protocol
       value: "http"
+    - name: ace-project
+      value: $(params.ace-project)
     taskRef:
       kind: Task
       name: ibm-setup

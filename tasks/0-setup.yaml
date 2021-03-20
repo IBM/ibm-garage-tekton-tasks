@@ -63,6 +63,7 @@ spec:
     - name: js-image
       default: quay.io/ibmgaragecloud/node:lts-stretch
     - name: ace-project
+      description: Name of the ACE Toolkit project
       default: ""
   results:
     - name: git-url
@@ -150,6 +151,7 @@ spec:
         echo -n "$(params.health-curl)">$(results.health-curl.path)
         echo -n "$(params.tools-image)">$(results.tools-image.path)
         echo -n "$(params.js-image)">$(results.js-image.path)
+        echo -n "$(params.ace-project)">$(results.ace-project.path)
 
 
         REGISTRY_SERVER="$(params.image-server)"
@@ -263,10 +265,11 @@ spec:
         echo -n "${PERFORM_SCAN_TRIVY}">$(results.scan-trivy.path)
         echo -n "${PERFORM_SCAN_IBM}">$(results.scan-ibm.path)
 
-        if [[ -d workspace ]]; then
+        if [[ -z "$(params.ace-project)" ]]; then
           # Retrieve name of ACE Toolkit project
           ACE_PROJECT=$(ls workspace)
+          echo -n "${ACE_PROJECT}">$(results.ace-project.path)
         fi
-        echo -n "${ACE_PROJECT}">$(results.ace-project.path)
+
 
         for f in /tekton/results/*; do echo "results.$(basename $f)=$(cat $f)"; done

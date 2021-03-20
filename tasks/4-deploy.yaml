@@ -194,17 +194,7 @@ spec:
             sed "s/unchanged//g" | while read target; do
             echo "Waiting for rollout of ${target} in ${APP_NAMESPACE}"
             if [[ ${target} == *"integrationserver"* ]]; then
-              while :
-              do
-                STATUS="$(oc get -n ${APP_NAMESPACE} ${target} -o jsonpath='{.status.phase}')"
-                if [[ "${STATUS}" == "Ready" ]]; then
-                  echo "${target} successfully rolled out."
-                  break
-                else
-                  echo "Waiting for ${target} rollout."
-                  sleep 30
-                fi
-              done
+              kubectl wait --timeout=-1s --for=condition=Ready ${target}
             else
               kubectl rollout status -n ${APP_NAMESPACE} ${target}
               SERVICE_PORT=$(kubectl get svc "${APP_NAME}" -n "${APP_NAMESPACE}" -o jsonpath="{.spec.ports[?(@.name == 'http')].port}")
