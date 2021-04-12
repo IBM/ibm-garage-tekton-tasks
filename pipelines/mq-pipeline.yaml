@@ -14,13 +14,10 @@ spec:
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "true"
-    - name: lint-dockerfile
-      description: Enable the pipeline to lint the Dockerfile for best practices
-      default: "true"
   tasks:
     - name: setup
       taskRef:
-        name: ibm-setup-v2-5-0
+        name: ibm-setup
       params:
         - name: git-url
           value: $(params.git-url)
@@ -28,11 +25,9 @@ spec:
           value: $(params.git-revision)
         - name: scan-image
           value: $(params.scan-image)
-        - name: lint-dockerfile
-          value: $(params.lint-dockerfile)
     - name: build
       taskRef:
-        name: ibm-build-tag-push-v2-5-0
+        name: ibm-build-tag-push-mq
       runAfter:
         - setup
       params:
@@ -52,7 +47,7 @@ spec:
           value: "$(tasks.setup.results.image-tag)"
     - name: deploy
       taskRef:
-        name: ibm-deploy-v2-5-0
+        name: ibm-deploy
       runAfter:
         - build
       params:
@@ -76,27 +71,5 @@ spec:
           value: "$(tasks.setup.results.app-name)"
         - name: deploy-ingress-type
           value: "$(tasks.setup.results.deploy-ingress-type)"
-        - name: tools-image
-          value: "$(tasks.setup.results.tools-image)"
-    - name: health
-      taskRef:
-        name: ibm-health-check-v2-5-0
-      runAfter:
-        - deploy
-      params:
-        - name: app-namespace
-          value: "$(tasks.setup.results.app-namespace)"
-        - name: app-name
-          value: "$(tasks.setup.results.app-name)"
-        - name: deploy-ingress-type
-          value: "$(tasks.setup.results.deploy-ingress-type)"
-        - name: health-protocol
-          value: "$(tasks.setup.results.health-protocol)"
-        - name: health-endpoint
-          value: "$(tasks.setup.results.health-endpoint)"
-        - name: health-url
-          value: "$(tasks.setup.results.health-url)"
-        - name: health-curl
-          value: "$(tasks.setup.results.health-curl)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
