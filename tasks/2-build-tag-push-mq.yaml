@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-build-tag-push-ace-bar
+  name: ibm-build-tag-push-mq
   annotations:
     description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
     app.openshift.io/description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
