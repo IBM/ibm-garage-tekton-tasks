@@ -1,0 +1,75 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: ibm-health-check-mq
+  annotations:
+    description: Performs a health check on the queue manager
+    app.openshift.io/description: Performs a health check on the queue manager
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: app-namespace
+      default: ""
+    - name: app-name
+      default: ""
+    - name: tools-image
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+  steps:
+    - name: health-check
+      image: $(params.tools-image)
+      script: |
+          #!/usr/bin/env bash
+          set -x
+
+          APP_NAME="$(params.app-name)"
+
+          RELEASE_NAME="${APP_NAME}"
+          echo "RELEASE_NAME: $RELEASE_NAME"
+
+          podname=$(kubectl get pods --selector=app.kubernetes.io/instance=$RELEASE_NAME -o custom-columns=POD:.metadata.name --no-headers | head -n 1)
+          echo "podname: $podname"
+
+          queue="QM1"
+          echo "queue name: $queue"
+
+          echo "Sleep before test to make sure QMGR is up"
+          sleep 20
+
+          echo "Print the queue details: ..."
+          echo ""
+          kubectl exec $podname -- /bin/bash -c "echo \"define qlocal($queue)\" | runmqsc "
+
+          echo "Print the queue details: ..."
+          echo ""
+          kubectl exec $podname -- /bin/bash -c "echo \"DISPLAY QL($queue) ALL\" | runmqsc" > checkQ.txt 2>&1
+          cat checkQ.txt
+
+          if grep -q "QUEUE($queue)" checkQ.txt; then
+            echo "Queue has been successfully created."
+          else
+            exit 1
+          fi
+
+          # put message on queue
+          kubectl exec $podname -- /bin/bash -c "echo \"hello-world\" | /opt/mqm/samp/bin/amqsput $queue" > putMessage.txt 2>&1
+          cat putMessage.txt
+          echo "----------"
+          fail="reason code"
+          if grep -q "$fail" putMessage.txt; then
+            exit 1
+          else
+            echo "Message has been successfully put the queue."
+          fi
+
+          # get message on queue
+          kubectl exec $podname  -c qmgr -- /opt/mqm/samp/bin/amqsget $queue > getMessage.txt 2>&1
+          cat getMessage.txt
+          if grep -q "hello-world" getMessage.txt; then
+              echo "Message has been found on the queue."
+          else
+              echo "Error: Message has not been retrieved from the queue."
+              exit 1
+          fi
