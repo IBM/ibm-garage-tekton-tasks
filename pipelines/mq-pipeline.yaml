@@ -73,3 +73,85 @@ spec:
           value: "$(tasks.setup.results.deploy-ingress-type)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
+    - name: health
+      taskRef:
+        name: ibm-health-check-mq
+      runAfter:
+        - deploy
+      params:
+        - name: app-namespace
+          value: "$(tasks.setup.results.app-namespace)"
+        - name: app-name
+          value: "$(tasks.setup.results.app-name)"
+        - name: tools-image
+          value: "$(tasks.setup.results.tools-image)"
+    - name: tag-release
+      taskRef:
+        name: ibm-tag-release
+      runAfter:
+        - health
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
+        - name: js-image
+          value: "$(tasks.setup.results.js-image)"
+    - name: img-release
+      taskRef:
+        name: ibm-img-release
+      runAfter:
+        - tag-release
+      params:
+        - name: image-from
+          value: "$(tasks.setup.results.image-url)"
+        - name: image-to
+          value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
+    - name: img-scan
+      taskRef:
+        name: ibm-img-scan
+      runAfter:
+        - img-release
+      params:
+        - name: image-url
+          value: $(tasks.img-release.results.image-url)
+        - name: scan-trivy
+          value: $(tasks.setup.results.scan-trivy)
+        - name: scan-ibm
+          value: $(tasks.setup.results.scan-ibm)
+    - name: helm-release
+      taskRef:
+        name: ibm-helm-release
+      runAfter:
+        - img-scan
+      params:
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: source-dir
+          value: "$(tasks.setup.results.source-dir)"
+        - name: image-url
+          value: "$(tasks.img-release.results.image-url)"
+        - name: app-name
+          value: "$(tasks.setup.results.app-name)"
+        - name: deploy-ingress-type
+          value: "$(tasks.setup.results.deploy-ingress-type)"
+        - name: tools-image
+          value: "$(tasks.setup.results.tools-image)"
+    - name: gitops
+      taskRef:
+        name: ibm-gitops
+      runAfter:
+        - helm-release
+      params:
+        - name: app-name
+          value: "$(tasks.setup.results.app-name)"
+        - name: version
+          value: "$(tasks.tag-release.results.tag)"
+        - name: helm-url
+          value: $(tasks.helm-release.results.helm-url)
+        - name: tools-image
+          value: "$(tasks.setup.results.tools-image)"
