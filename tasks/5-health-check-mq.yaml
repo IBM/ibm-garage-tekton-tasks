@@ -26,7 +26,8 @@ spec:
 
           APP_NAME="$(params.app-name)"
 
-          RELEASE_NAME="${APP_NAME}"
+          # RELEASE_NAME="${APP_NAME}"
+          RELEASE_NAME="qm-dev"
           echo "RELEASE_NAME: $RELEASE_NAME"
 
           podname=$(kubectl get pods --selector=app.kubernetes.io/instance=$RELEASE_NAME -o custom-columns=POD:.metadata.name --no-headers | head -n 1)
