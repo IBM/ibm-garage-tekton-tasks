@@ -270,7 +270,7 @@ spec:
 
         if [[ -z "$(params.ace-project)" ]]; then
           # Retrieve name of ACE Toolkit project
-          ACE_PROJECT=$(ls workspace)
+          ACE_PROJECT=$(ls workspace || true)
           echo -n "${ACE_PROJECT}">$(results.ace-project.path)
         fi
 
