@@ -82,8 +82,6 @@ spec:
     envFrom:
     - secretRef:
         name: artifactory-access
-    - configMapRef:
-        name: artifactory-config
     command:
     - /bin/sh
     args:
@@ -101,7 +99,7 @@ spec:
       mqsicreatebar -data . -b $(params.source-dir)/$(params.app-name)-$(params.image-tag).bar -a $(params.ace-project)
 
       echo "Upload BAR to Artifactory"
-      curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -T $(params.source-dir)/$(params.app-name)-$(params.image-tag).bar "$(ARTIFACTORY_URL)/artifactory/generic-local/$(params.app-name)-$(params.image-tag).bar"
+      curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_ENCRYPT} -T $(params.source-dir)/$(params.app-name)-$(params.image-tag).bar "$(ARTIFACTORY_URL)/artifactory/generic-local/$(params.app-name)-$(params.image-tag).bar"
   - name: build
     image: $(params.BUILDER_IMAGE)
     workingDir: $(params.source-dir)
