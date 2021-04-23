@@ -56,6 +56,6 @@ spec:
         git checkout $(params.git-revision)
     - name: test
       image: $(params.build-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
         make test

@@ -65,7 +65,7 @@ spec:
         git checkout $(params.git-revision)
     - name: package-helm
       image: $(params.tools-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: TLS_SECRET_NAME
           valueFrom:

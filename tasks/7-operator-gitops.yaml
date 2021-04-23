@@ -35,7 +35,7 @@ spec:
   steps:
     - name: gitops
       image: $(params.tools-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: NAMESPACE
           valueFrom:

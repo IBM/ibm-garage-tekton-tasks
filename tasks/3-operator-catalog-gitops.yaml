@@ -72,7 +72,7 @@ spec:
         git checkout $(params.git-revision)
     - name: gitops
       image: $(params.tools-image)
-      workingdir: $(params.gitops-dir)
+      workingDir: $(params.gitops-dir)
       env:
         - name: NAMESPACE
           valueFrom:
