@@ -61,7 +61,7 @@ spec:
         git checkout $(params.git-revision)
     - name: lint
       image: $(params.LINT_IMAGE)
-      workingdir: $(params.source-dir)      
+      workingDir: $(params.source-dir)      
       env:
         - name: HADOLINT_CFG
           valueFrom:

@@ -75,7 +75,7 @@ spec:
         git checkout $(params.git-revision)
     - name: generate-catalog
       image: $(params.OPM_IMAGE)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: REGISTRY_URL
           valueFrom:
@@ -137,7 +137,7 @@ spec:
         opm index add ${SKIPTLS} --bundles "${BUNDLES}" --generate -d $(params.DOCKERFILE)
     - name: build
       image: $(params.BUILDER_IMAGE)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: REGISTRY_USER
           valueFrom:

@@ -58,17 +58,17 @@ spec:
         git checkout $(params.git-revision)
     - name: build
       image: $(params.golang-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
           go build ./...
     - name: test
       image: $(params.golang-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
           go test ./...
     - name: sonar-scan
       image: $(params.sonarqube-cli)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: SONAR_USER_HOME
           value: $(params.source-dir)

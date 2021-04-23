@@ -59,7 +59,7 @@ spec:
         git checkout $(params.git-revision)
     - name: pact-verify
       image: $(params.gradle-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: GRADLE_USER_HOME
           value: $(params.source-dir)

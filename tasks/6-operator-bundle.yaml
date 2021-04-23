@@ -79,7 +79,7 @@ spec:
         git checkout $(params.git-revision)
     - name: build
       image: $(params.BUNDLE_IMAGE)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: REGISTRY_USER
           valueFrom:

@@ -64,7 +64,7 @@ spec:
         git switch -c local
     - name: git-tag
       image: $(params.js-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
         #!/usr/bin/env bash
         set -ex

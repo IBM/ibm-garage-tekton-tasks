@@ -60,7 +60,7 @@ spec:
         git checkout $(params.git-revision)
     - name: build
       image: $(params.maven-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
         if [[ -f "./mvnw" ]]; then
           ./mvnw package
@@ -69,7 +69,7 @@ spec:
         fi
     - name: test
       image: $(params.maven-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
         if [[ -f "./mvnw" ]]; then
           ./mvnw test
@@ -78,7 +78,7 @@ spec:
         fi
     - name: sonar-scan
       image: $(params.sonarqube-cli)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: SONAR_USER_HOME
           value: $(params.source-dir)

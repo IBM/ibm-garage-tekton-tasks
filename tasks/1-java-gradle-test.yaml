@@ -63,17 +63,17 @@ spec:
         git checkout $(params.git-revision)
     - name: build
       image: $(params.gradle-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
           ./gradlew assemble --no-daemon
     - name: test
       image: $(params.gradle-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       script: |
           ./gradlew testClasses --no-daemon
     - name: sonar-scan
       image: $(params.sonarqube-cli)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: SONAR_USER_HOME
           value: $(params.source-dir)
