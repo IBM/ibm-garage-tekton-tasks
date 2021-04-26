@@ -75,6 +75,12 @@ spec:
               name: gitops-repo
               key: parentdir
               optional: true
+        - name: GIT_PARENT_DIR_SERVICES
+          valueFrom:
+            configMapKeyRef:
+              name: gitops-repo
+              key: parentdir-services
+              optional: true
         - name: GIT_PROTOCOL
           valueFrom:
             configMapKeyRef:
@@ -116,6 +122,10 @@ spec:
           fi
           if [[ -n "$(params.parentdir)" ]]; then
             PARENT_DIR="$(params.parentdir)"
+          elif [[ -n "${GIT_PARENT_DIR_SERVICES}" ]] && [[ "${GIT_PARENT_DIR_SERVICES}" = "bash -c"* ]]; then
+            PARENT_DIR=$(eval $GIT_PARENT_DIR_SERVICES | tail -n 1)
+          elif [[ -n "${GIT_PARENT_DIR_SERVICES}" ]]; then
+            PARENT_DIR="${GIT_PARENT_DIR_SERVICES}"
           elif [[ -n "${GIT_PARENT_DIR}" ]] && [[ "${GIT_PARENT_DIR}" = "bash -c"* ]]; then
             PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)
           elif [[ -n "${GIT_PARENT_DIR}" ]]; then
