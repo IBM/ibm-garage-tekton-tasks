@@ -89,6 +89,18 @@ spec:
               name: registry-access
               key: REGISTRY_PASSWORD
               optional: true
+        - name: IBM_ENTITLED_REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: ibm-entitled-registry-credentials
+              key: IBM_ENTITLED_REGISTRY_USER
+              optional: true
+        - name: IBM_ENTITLED_REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ibm-entitled-registry-credentials
+              key: IBM_ENTITLED_REGISTRY_PASSWORD
+              optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
@@ -96,6 +108,10 @@ spec:
         privileged: true
       script: |
         APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
+        if [[ -n "${IBM_ENTITLED_REGISTRY_USER}" ]] && [[ -n "${IBM_ENTITLED_REGISTRY_PASSWORD}" ]]; then
+          buildah login -u ${IBM_ENTITLED_REGISTRY_USER} -p ${IBM_ENTITLED_REGISTRY_PASSWORD} cp.icr.io
+          echo "buildah login -u "${IBM_ENTITLED_REGISTRY_USER}" -p "xxxxx" cp.icr.io"
+        fi
         buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
         set +x
         if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
@@ -104,4 +120,3 @@ spec:
         fi
         set -x
         buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
-
