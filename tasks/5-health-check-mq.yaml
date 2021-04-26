@@ -41,7 +41,7 @@ spec:
 
           echo "Print the queue details: ..."
           echo ""
-          kubectl exec $podname -- /bin/bash -c "echo \"define qlocal($queue)\" | runmqsc "
+          kubectl exec $podname -- /bin/bash -c "echo \"define qlocal($queue) replace\" | runmqsc "
 
           echo "Print the queue details: ..."
           echo ""
