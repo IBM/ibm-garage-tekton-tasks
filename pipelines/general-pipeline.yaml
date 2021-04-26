@@ -1,9 +1,8 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: ibm-codait
+  name: ibm-general
   annotations:
-    app.openshift.io/runtime: python
 spec:
   params:
     - name: git-url
