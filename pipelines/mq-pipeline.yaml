@@ -27,7 +27,7 @@ spec:
           value: $(params.scan-image)
     - name: build
       taskRef:
-        name: ibm-build-tag-push-mq
+        name: ibm-build-tag-push
       runAfter:
         - setup
       params:
@@ -143,7 +143,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: gitops
       taskRef:
-        name: ibm-gitops-services
+        name: ibm-gitops
       runAfter:
         - helm-release
       params:
