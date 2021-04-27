@@ -29,7 +29,7 @@ spec:
           value: $(params.scan-image)
         - name: lint-dockerfile
           value: $(params.lint-dockerfile)
-    - name: test
+    - name: code-lint
       taskRef:
         name: ibm-sonar-test
       runAfter:
