@@ -46,9 +46,9 @@ spec:
           value: "$(tasks.setup.results.js-image)"
         - name: app-name
           value: $(tasks.setup.results.app-name)
-    - name: hadolint
+    - name: dockerfile-lint
       taskRef:
-        name: ibm-hadolint
+        name: ibm-dockerfile-lint
       runAfter:
         - test
       params:
@@ -64,7 +64,7 @@ spec:
       taskRef:
         name: ibm-build-tag-push
       runAfter:
-        - hadolint
+        - dockerfile-lint
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"

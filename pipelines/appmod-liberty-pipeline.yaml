@@ -55,9 +55,9 @@ spec:
           value: "$(tasks.setup.results.app-name)"
         - name: sonarqube-java-bin-path
           value: "$(params.java-bin-path)"
-    - name: hadolint
+    - name: dockerfile-lint
       taskRef:
-        name: ibm-hadolint
+        name: ibm-dockerfile-lint
       runAfter:
         - test
       params:
@@ -73,7 +73,7 @@ spec:
       taskRef:
         name: ibm-build-tag-push
       runAfter:
-        - hadolint
+        - dockerfile-lint
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"

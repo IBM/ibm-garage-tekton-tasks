@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-hadolint
+  name: ibm-dockerfile-lint
   annotations:
     description: Optional linter for Dockerfiles; if a ".hadolint" file is in the repo root, this task automatically picks up; otherwise hadolint file name must be passed via ConfigMap. See Hadolint on Dockerhub for more
     app.openshift.io/description: Optional linter for Dockerfiles; if a ".hadolint" file is in the repo root, this task automatically picks up; otherwise hadolint file name must be passed via ConfigMap
@@ -21,7 +21,7 @@ spec:
     - name: CONTEXT
       default: .
     - name: LINT_IMAGE
-      default: hadolint/hadolint
+      default: ghcr.io/hadolint/hadolint:v2.3.0-alpine
     - name: lint-dockerfile
       default: "true"
 
@@ -70,7 +70,6 @@ spec:
               key: HADOLINT_CFG
               optional: true
       script: | 
-        set +x
         PERFORM_LINT="$(params.lint-dockerfile)"
         if [[ "${PERFORM_LINT}" == "false" ]] || [[ -z "${PERFORM_LINT}" ]]; then
           echo "User selected to skip Dockerfile linting. Skipping this task."
@@ -98,5 +97,3 @@ spec:
           echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
           hadolint $(params.DOCKERFILE)
         fi
-        
-        set -x
