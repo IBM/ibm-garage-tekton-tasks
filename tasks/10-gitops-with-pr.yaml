@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-gitops
+  name: ibm-gitops-with-pr
   annotations:
     description: Publishes the helm chart configuration to the provided gitops repo to trigger downstream deployments
     app.openshift.io/description: Publishes the helm chart configuration to the provided gitops repo to trigger downstream deployments
@@ -37,7 +37,7 @@ spec:
   steps:
     - name: gitops
       image: $(params.tools-image)
-      workingDir: $(params.source-dir)
+      workingdir: $(params.source-dir)
       env:
         - name: NAMESPACE
           valueFrom:
@@ -70,12 +70,6 @@ spec:
               key: password
               optional: true
         - name: GIT_PARENT_DIR
-          valueFrom:
-            configMapKeyRef:
-              name: gitops-repo
-              key: parentdir
-              optional: true
-        - name: GIT_PARENT_DIR_SERVICES
           valueFrom:
             configMapKeyRef:
               name: gitops-repo
@@ -122,10 +116,6 @@ spec:
           fi
           if [[ -n "$(params.parentdir)" ]]; then
             PARENT_DIR="$(params.parentdir)"
-          elif [[ -n "${GIT_PARENT_DIR_SERVICES}" ]] && [[ "${GIT_PARENT_DIR_SERVICES}" = "bash -c"* ]]; then
-            PARENT_DIR=$(eval $GIT_PARENT_DIR_SERVICES | tail -n 1)
-          elif [[ -n "${GIT_PARENT_DIR_SERVICES}" ]]; then
-            PARENT_DIR="${GIT_PARENT_DIR_SERVICES}"
           elif [[ -n "${GIT_PARENT_DIR}" ]] && [[ "${GIT_PARENT_DIR}" = "bash -c"* ]]; then
             PARENT_DIR=$(eval $GIT_PARENT_DIR | tail -n 1)
           elif [[ -n "${GIT_PARENT_DIR}" ]]; then
@@ -175,7 +165,6 @@ spec:
           git clone ${BRANCH_CMD} ${GIT_URL} gitops_cd
           set -x
           cd gitops_cd
-
 
           if [[ -f "${SUBDIR}/${YAML_FILE}" ]]; then
             echo "Requirements before update"
@@ -230,6 +219,15 @@ spec:
             exit 0
           fi
 
+          git checkout -b cntk-ci-pipeline-${APP_NAME}-${VERSION}
+
+          # push changes to git
           git add "${SUBDIR}/"
-          git commit -m "Updates ${APP_NAME} to ${VERSION}"
-          git push -v
+          git commit -m "Cloudnative toolkit pipeline updates ${APP_NAME} to ${VERSION}"
+          git remote rm origin
+
+          git remote add origin ${GIT_URL} > /dev/null 2>&1
+          git push origin cntk-ci-pipeline-${APP_NAME}-${VERSION}
+
+          GIT_PUSH_URL="${PROTOCOL}://api.github.com/repos/${GIT_ORG}/${GIT_REPO}/pulls"
+          curl -u ${GIT_AUTH_USER}:${GIT_AUTH_PWD} -d '{"title":"PR to promote to next environment","base":"'${GIT_BRANCH}'", "head":"'${GIT_ORG}':cntk-ci-pipeline-'${APP_NAME}'-'${VERSION}'"}' ${GIT_PUSH_URL}

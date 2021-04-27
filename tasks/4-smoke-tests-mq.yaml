@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-deploy
+  name: ibm-smoke-tests-mq
   annotations:
     description: Deploys the application to the CI environment for verification using the provided helm chart
     app.openshift.io/description: Deploys the application to the CI environment for verification using the provided helm chart
@@ -71,7 +71,7 @@ spec:
         git checkout $(params.git-revision)
     - name: deploy
       image: $(params.tools-image)
-      workingDir: $(params.source-dir)
+      workingdir: $(params.source-dir)
       env:
         - name: TLS_SECRET_NAME
           valueFrom:
@@ -208,3 +208,82 @@ spec:
             fi
             echo -n "${target}" | cut -f1 -d / | tee $(results.resource-type.path)
           done
+    - name: health-check
+      image: $(params.tools-image)
+      script: |
+          #!/usr/bin/env bash
+          set -x
+
+          APP_NAME="$(params.app-name)"
+
+          # RELEASE_NAME="${APP_NAME}"
+          RELEASE_NAME="qm-dev"
+          echo "RELEASE_NAME: $RELEASE_NAME"
+
+          podname=$(kubectl get pods --selector=app.kubernetes.io/instance=$RELEASE_NAME -o custom-columns=POD:.metadata.name --no-headers | head -n 1)
+          echo "podname: $podname"
+
+          queue="QM1"
+          echo "queue name: $queue"
+
+          echo "Sleep before test to make sure QMGR is up"
+          sleep 20
+
+          echo "Print the queue details: ..."
+          echo ""
+          kubectl exec $podname -- /bin/bash -c "echo \"define qlocal($queue) replace\" | runmqsc "
+
+          echo "Print the queue details: ..."
+          echo ""
+          kubectl exec $podname -- /bin/bash -c "echo \"DISPLAY QL($queue) ALL\" | runmqsc" > checkQ.txt 2>&1
+          cat checkQ.txt
+
+          if grep -q "QUEUE($queue)" checkQ.txt; then
+            echo "Queue has been successfully created."
+          else
+            exit 1
+          fi
+
+          # put message on queue
+          kubectl exec $podname -- /bin/bash -c "echo \"hello-world\" | /opt/mqm/samp/bin/amqsput $queue" > putMessage.txt 2>&1
+          cat putMessage.txt
+          echo "----------"
+          fail="reason code"
+          if grep -q "$fail" putMessage.txt; then
+            exit 1
+          else
+            echo "Message has been successfully put the queue."
+          fi
+
+          # get message on queue
+          kubectl exec $podname  -c qmgr -- /opt/mqm/samp/bin/amqsget $queue > getMessage.txt 2>&1
+          cat getMessage.txt
+          if grep -q "hello-world" getMessage.txt; then
+              echo "Message has been found on the queue."
+          else
+              echo "Error: Message has not been retrieved from the queue."
+              exit 1
+          fi
+    - name: cleanup
+      image: $(params.tools-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: TLS_SECRET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: TLS_SECRET_NAME
+              optional: true
+        - name: INGRESS_SUBDOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: ibmcloud-config
+              key: INGRESS_SUBDOMAIN
+              optional: true
+      script: |
+          #!/usr/bin/env bash
+          set -ex
+
+          APP_NAMESPACE="$(params.app-namespace)"
+
+          kubectl delete -n ${APP_NAMESPACE} -f ./release.yaml
