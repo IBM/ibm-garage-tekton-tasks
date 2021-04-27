@@ -16,6 +16,9 @@ spec:
     - name: lint-dockerfile
       description: Enable the pipeline to lint the Dockerfile for best practices
       default: "true"
+    - name: health-endpoint
+      description: Endpoint to check health after deployment, defaults /
+      default: "/"
   tasks:
     - name: setup
       taskRef:
@@ -27,9 +30,11 @@ spec:
           value: $(params.git-revision)
         - name: scan-image
           value: $(params.scan-image)
+        - name: health-endpoint
+          value: $(params.health-endpoint)
         - name: lint-dockerfile
           value: $(params.lint-dockerfile)
-    - name: test
+    - name: code-lint
       taskRef:
         name: ibm-sonar-test
       runAfter:
@@ -43,11 +48,11 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: app-name
           value: $(tasks.setup.results.app-name)
-    - name: hadolint
+    - name: dockerfile-lint
       taskRef:
-        name: ibm-hadolint
+        name: ibm-dockerfile-lint
       runAfter:
-        - test
+        - code-lint
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
@@ -61,7 +66,7 @@ spec:
       taskRef:
         name: ibm-build-tag-push
       runAfter:
-        - hadolint
+        - dockerfile-lint
       params:
         - name: git-url
           value: "$(tasks.setup.results.git-url)"
