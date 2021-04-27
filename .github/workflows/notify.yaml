@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      NOTIFY_SLUG: ibm-garage-cloud/terraform-tools-tekton-resources
+      NOTIFY_SLUG: cloud-native-toolkit/terraform-tools-tekton-resources
 
     steps:
       - name: Publish repository dispatch
