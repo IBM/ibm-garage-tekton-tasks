@@ -71,7 +71,7 @@ spec:
         git checkout $(params.git-revision)
     - name: deploy
       image: $(params.tools-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: TLS_SECRET_NAME
           valueFrom:
@@ -266,7 +266,7 @@ spec:
           fi
     - name: cleanup
       image: $(params.tools-image)
-      workingdir: $(params.source-dir)
+      workingDir: $(params.source-dir)
       env:
         - name: TLS_SECRET_NAME
           valueFrom:
