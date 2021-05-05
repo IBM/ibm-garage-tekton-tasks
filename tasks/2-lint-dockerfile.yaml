@@ -51,7 +51,7 @@ spec:
       script: |
         set +x
         if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
-            git clone "https://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F 'https://' '{print $2}')" $(params.source-dir)
+            git clone "$(echo $(params.git-url) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.git-url) | awk -F '://' '{print $2}')" $(params.source-dir)
         else
             set -x
             git clone $(params.git-url) $(params.source-dir)
@@ -61,7 +61,7 @@ spec:
         git checkout $(params.git-revision)
     - name: lint
       image: $(params.LINT_IMAGE)
-      workingDir: $(params.source-dir)      
+      workingDir: $(params.source-dir)
       env:
         - name: HADOLINT_CFG
           valueFrom:
@@ -69,13 +69,13 @@ spec:
               name: hadolint-config
               key: HADOLINT_CFG
               optional: true
-      script: | 
+      script: |
         PERFORM_LINT="$(params.lint-dockerfile)"
         if [[ "${PERFORM_LINT}" == "false" ]] || [[ -z "${PERFORM_LINT}" ]]; then
           echo "User selected to skip Dockerfile linting. Skipping this task."
           exit 0
         fi
-        
+
         FILE="$(params.source-dir)"/.hadolint.yaml
 
         if [ -f "${HADOLINT_CFG}" ]; then
@@ -90,9 +90,9 @@ spec:
           cat "${FILE}"
           echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
           hadolint $(params.DOCKERFILE)
-        
+
         else
-          echo "In this step, hadolint will lint your Dockerfile" 
+          echo "In this step, hadolint will lint your Dockerfile"
           echo "If you would like to configure hadolint, please see https://github.com/hadolint/hadolint"
           echo "For more information about hadolint please refer to https://cloudnativetoolkit.dev/"
           hadolint $(params.DOCKERFILE)
