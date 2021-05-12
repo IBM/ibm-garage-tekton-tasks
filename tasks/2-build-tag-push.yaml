@@ -120,3 +120,115 @@ spec:
         fi
         set -x
         buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+
+    - name: signImage
+      #image: $(params.BUILDER_IMAGE)
+      image: $(params.SKOPEO_IMAGE)
+      workingDir: $(params.source-dir)
+      env:
+        - name: IBM_CLOUD_APIKEY
+          valueFrom:
+            secretKeyRef:
+              key: APIKEY
+              name: ibmcloud-apikey
+              optional: true
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_PASSWORD
+              optional: true
+        - name: IBM_ENTITLED_REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: ibm-entitled-registry-credentials
+              key: IBM_ENTITLED_REGISTRY_USER
+              optional: true
+        - name: IBM_ENTITLED_REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ibm-entitled-registry-credentials
+              key: IBM_ENTITLED_REGISTRY_PASSWORD
+              optional: true
+        - name: HPCS_INSTANCE_ID
+          default: ""
+        - name: HPCS_SIGNER_PRIVATE_KEY_ID
+          default: ""
+        - name: HPCS_URL
+          default: ""
+        - name: SIGNATURE
+          default: ""
+      script: |
+          if [-z "$HPCS_INSTANCE_ID" ||  -z "$HPCS_SIGNER_PRIVATE_KEY_ID" || -z "$HPCS_URL" || -z "$SIGNATURE"]; then 
+            echo "Complete HPCS information not provided.  Image will not be signed"
+            exit 0
+          fi
+
+          set -x
+
+          APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
+        
+          # Get IAM access token for subsequent requests
+          curl -s -o token.txt \
+            -X POST "https://iam.cloud.ibm.com/identity/token" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --header "Accept: application/json"  \
+            --data-urlencode "grant_type=urn:ibm:params:oauth:grant-type:apikey" \
+            --data-urlencode "apikey=${IBM_CLOUD_APIKEY}"
+
+          IAM_TOKEN=$(jq ".access_token" -r token.txt)
+
+          # echo "IAM TOKEN:"
+          # printf "\n${IAM_TOKEN}\n\n"
+
+          # Get private key for signing
+          curl -s -o payload \
+            "${HPCS_URL}/api/v2/keys/${HPCS_SIGNER_PRIVATE_KEY_ID}" \
+            -H "Authorization: Bearer ${IAM_TOKEN}"   \
+            -H "Content-Type: application/json" \
+            -H "bluemix-instance: ${HPCS_INSTANCE_ID}"
+
+          # echo "payload:"
+          # cat payload
+
+
+          #printf "\n\nencodedkey:\n"
+          ENCODEDKEY=$(jq ".resources[0].payload" -r payload)
+          echo $ENCODEDKEY > encodedkey
+
+          # cat encodedkey
+
+          base64 -d encodedkey > decodedkey
+
+          # printf "\n\ndecodedkey:\n"
+          # cat decodedkey
+
+          #import decoded key
+          gpg --import decodedkey
+          skopeo --tls-verify=$(params.TLSVERIFY) --insecure-policy copy --sign-by $SIGNATURE docker://${APP_IMAGE} docker://${APP_IMAGE}
+
+          ls -laR
+
+          skopeo inspect --tls-verify=false docker://${APP_IMAGE_SIGNED}
+
+          # cleanup
+          rm -f token.txt
+          rm -f payload
+          rm -f encodedkey
+          rm -f decodedkey
+          gpg --batch --delete-secret-key $SIGNER
+
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      securityContext:
+        privileged: true
+      script: |
+        
+
