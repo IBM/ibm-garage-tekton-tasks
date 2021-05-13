@@ -43,6 +43,18 @@ spec:
               name: registry-access
               key: REGISTRY_PASSWORD
               optional: true
+        - name: IMAGE_SIGNING_KEY
+          valueFrom:
+            secretKeyRef:
+              name: image-signing-key
+              key: IMAGE_SIGNING_KEY
+              optional: true
+        - name: IMAGE_SIGNING_SIGNATURE
+          valueFrom:
+            secretKeyRef:
+              name: image-signing-signature
+              key: IMAGE_SIGNING_SIGNATURE
+              optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
@@ -55,6 +67,7 @@ spec:
         REGISTRY_SERVER_TO=$(echo "${IMAGE_TO}" | awk -F / '{print $1}')
         IMAGE_FROM_TLS_VERIFY=$(params.IMAGE_FROM_TLS_VERIFY)
         IMAGE_TO_TLS_VERIFY=$(params.IMAGE_TO_TLS_VERIFY)
+        SIGNING_PARAMETERS=""
 
         echo "Tagging ${IMAGE_FROM} as ${IMAGE_TO}"
         set +x
@@ -72,8 +85,29 @@ spec:
           IMAGE_TO_TLS_VERIFY="false"
         fi
 
-        echo "skopeo copy --src-creds=xxxx --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} --dest-creds=xxxx --dest-tls-verify=${IMAGE_TO_TLS_VERIFY} docker://${IMAGE_FROM} docker://${IMAGE_TO}"
-        set +x
-        skopeo copy ${IMAGE_FROM_CREDS} --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} ${IMAGE_TO_CREDS} --dest-tls-verify=${IMAGE_TO_TLS_VERIFY} docker://${IMAGE_FROM} docker://${IMAGE_TO}
+        if [[ -n "$IMAGE_SIGNING_KEY" ]] ; then 
+          echo "IMAGE_SIGNING_KEY secret found."
+
+          set -x
+          SIGNING_PARAMETERS="--sign-by $IMAGE_SIGNING_SIGNATURE"
+
+          echo $IMAGE_SIGNING_KEY > encodedkey
+          base64 -d encodedkey > decodedkey
+
+          #import decoded key
+          gpg --import decodedkey
+        fi
+
         set -x
+        COMMAND="skopeo ${SIGNING_PARAMETERS} copy ${IMAGE_FROM_CREDS} --src-tls-verify=${IMAGE_FROM_TLS_VERIFY} ${IMAGE_TO_CREDS} --dest-tls-verify=${IMAGE_TO_TLS_VERIFY} docker://${IMAGE_FROM} docker://${IMAGE_TO}"
+
+        echo $COMMAND
+        ${COMMAND}
+
         echo -n "${IMAGE_TO}" | tee $(results.image-url.path)
+
+        if [[ -n "$IMAGE_SIGNING_KEY" ]] ; then 
+          skopeo inspect --tls-verify=false docker://${IMAGE_TO}
+          rm -f encodedkey
+          rm -f decodedkey
+        fi
