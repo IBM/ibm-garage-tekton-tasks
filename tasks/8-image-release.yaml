@@ -49,11 +49,11 @@ spec:
               name: image-signing-key
               key: IMAGE_SIGNING_KEY
               optional: true
-        - name: IMAGE_SIGNING_SIGNATURE
+        - name: IMAGE_SIGNING_FINGERPRINT
           valueFrom:
             secretKeyRef:
               name: image-signing-signature
-              key: IMAGE_SIGNING_SIGNATURE
+              key: IMAGE_SIGNING_FINGERPRINT
               optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
@@ -89,7 +89,7 @@ spec:
           echo "IMAGE_SIGNING_KEY secret found."
 
           set -x
-          SIGNING_PARAMETERS="--sign-by $IMAGE_SIGNING_SIGNATURE"
+          SIGNING_PARAMETERS="--sign-by $IMAGE_SIGNING_FINGERPRINT"
 
           echo $IMAGE_SIGNING_KEY > encodedkey
           base64 -d encodedkey > decodedkey
