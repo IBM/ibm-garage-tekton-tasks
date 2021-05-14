@@ -31,6 +31,12 @@ spec:
     - name: image-tag
       image: $(params.SKOPEO_IMAGE)
       env:
+        - name: IBM_CLOUD_APIKEY
+          valueFrom:
+            secretKeyRef:
+              key: APIKEY
+              name: ibmcloud-apikey
+              optional: true
         - name: REGISTRY_USER
           valueFrom:
             secretKeyRef:
@@ -43,18 +49,26 @@ spec:
               name: registry-access
               key: REGISTRY_PASSWORD
               optional: true
-        - name: IMAGE_SIGNING_KEY
+        - name: HPCS_INSTANCE_ID
           valueFrom:
-            secretKeyRef:
-              name: image-signing-key
-              key: IMAGE_SIGNING_KEY
-              optional: true
-        - name: IMAGE_SIGNING_FINGERPRINT
+            configMapKeyRef:
+              name: portieris-keys
+              key: hpcs-instance-id
+        - name: HPCS_KEY_ID
           valueFrom:
-            secretKeyRef:
-              name: image-signing-signature
-              key: IMAGE_SIGNING_FINGERPRINT
-              optional: true
+            configMapKeyRef:
+              name: portieris-keys
+              key: hpcs-key-id
+        - name: HPCS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: portieris-keys
+              key: hpcs-url
+        - name: SIGNATURE_FINGERPRINT
+          valueFrom:
+            configMapKeyRef:
+              name: portieris-keys
+              key: portieris-signature-fingerprint
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
@@ -84,17 +98,39 @@ spec:
         if [[ "${REGISTRY_SERVER_TO}" =~ ":" ]]; then
           IMAGE_TO_TLS_VERIFY="false"
         fi
-
-        if [[ -n "$IMAGE_SIGNING_KEY" ]] ; then 
-          echo "IMAGE_SIGNING_KEY secret found."
+        
+        if [[ -n "$SIGNATURE_FINGERPRINT" ]] ; then
+        
+          echo "Image signing parameters found.  Attempting to sign the image."
 
           set -x
-          SIGNING_PARAMETERS="--sign-by $IMAGE_SIGNING_FINGERPRINT"
+          SIGNING_PARAMETERS="--sign-by $SIGNATURE_FINGERPRINT"
 
-          echo $IMAGE_SIGNING_KEY > encodedkey
+          yum install jq -y
+
+        
+          echo "Getting IAM Token"
+          curl -s -o token.txt \
+            -X POST "https://iam.cloud.ibm.com/identity/token" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --header "Accept: application/json"  \
+            --data-urlencode "grant_type=urn:ibm:params:oauth:grant-type:apikey" \
+            --data-urlencode "apikey=${IBM_CLOUD_APIKEY}"
+
+          IAM_TOKEN=$(jq ".access_token" -r token.txt)
+
+          echo "Getting private key from keystore for image signing"
+          curl -s -o payload \
+            "${HPCS_URL}/api/v2/keys/${HPCS_KEY_ID}" \
+            -H "Authorization: Bearer ${IAM_TOKEN}"   \
+            -H "Content-Type: application/json" \
+            -H "bluemix-instance: ${HPCS_INSTANCE_ID}"
+
+          ENCODEDKEY=$(jq ".resources[0].payload" -r payload)
+          echo $ENCODEDKEY > encodedkey
           base64 -d encodedkey > decodedkey
 
-          #import decoded key
+          echo "Importing key"
           gpg --import decodedkey
         fi
 
@@ -106,8 +142,12 @@ spec:
 
         echo -n "${IMAGE_TO}" | tee $(results.image-url.path)
 
-        if [[ -n "$IMAGE_SIGNING_KEY" ]] ; then 
+        if [[ -n "$SIGNATURE_FINGERPRINT" ]] ; then 
           skopeo inspect --tls-verify=false docker://${IMAGE_TO}
+
+          # cleanup
+          rm -f token.txt
+          rm -f payload
           rm -f encodedkey
           rm -f decodedkey
         fi
