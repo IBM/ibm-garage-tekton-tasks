@@ -1,13 +1,17 @@
-on:
-  release:
-    types: [published]
+on: 
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'The remote repository'     
+        required: true
+        default: 'cloud-native-toolkit/terraform-tools-tekton-resources'
 
 jobs:
   notify:
     runs-on: ubuntu-latest
 
     env:
-      NOTIFY_SLUG: cloud-native-toolkit/terraform-tools-tekton-resources
+      NOTIFY_SLUG: ${{ github.event.inputs.slug }}
 
     steps:
       - name: Publish repository dispatch
