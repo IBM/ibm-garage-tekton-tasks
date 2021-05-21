@@ -1,8 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-build-tag-push-v2-5-0
-  annotations:
+  name: ibm-build-tag-push
     description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
     app.openshift.io/description: Executes logic to build, tag and push a container image using the intermediate sha tag to the image-url
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
@@ -101,27 +100,27 @@ spec:
               name: ibm-entitled-registry-credentials
               key: IBM_ENTITLED_REGISTRY_PASSWORD
               optional: true
-        - name: HPCS_INSTANCE_ID
+        - name: VAULT_INSTANCE_ID
           valueFrom:
-            configMapKeyRef:
+            secretKeyRef:
               name: portieris-keys
-              key: hpcs-instance-id
+              key: vault-instance-id
               optional: true
-        - name: HPCS_KEY_ID
+        - name: VAULT_KEY_ID
           valueFrom:
-            configMapKeyRef:
+            secretKeyRef:
               name: portieris-keys
-              key: hpcs-key-id
+              key: vault-key-id
               optional: true
-        - name: HPCS_URL
+        - name: VAULT_URL
           valueFrom:
-            configMapKeyRef:
+            secretKeyRef:
               name: portieris-keys
-              key: hpcs-url
+              key: vault-url
               optional: true
         - name: SIGNATURE_FINGERPRINT
           valueFrom:
-            configMapKeyRef:
+            secretKeyRef:
               name: portieris-keys
               key: portieris-signature-fingerprint
               optional: true
@@ -148,7 +147,6 @@ spec:
           buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
           echo "buildah login -u \"${REGISTRY_USER}\" -p \"xxxxx\" \"$(params.image-server)\""
         fi
-        set -x
 
         SIGNING_PARAMETERS=""
         if [[ -n "$SIGNATURE_FINGERPRINT" ]] ; then
@@ -170,10 +168,10 @@ spec:
 
           echo "Getting private key from keystore for image signing"
           curl -s -o payload \
-            "${HPCS_URL}/api/v2/keys/${HPCS_KEY_ID}" \
+            "${VAULT_URL}/api/v2/keys/${VAULT_KEY_ID}" \
             -H "Authorization: Bearer ${IAM_TOKEN}"   \
             -H "Content-Type: application/json" \
-            -H "bluemix-instance: ${HPCS_INSTANCE_ID}"
+            -H "bluemix-instance: ${VAULT_INSTANCE_ID}"
 
           ENCODEDKEY=$(jq ".resources[0].payload" -r payload)
           echo $ENCODEDKEY > encodedkey
