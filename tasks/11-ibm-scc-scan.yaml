@@ -92,6 +92,13 @@ spec:
 
           printf "\nSTATUS: ${STATUS}\n"
           jq '.' response.txt   
+
+
+          # cleanup
+          rm -f token.txt
+          rm -f details.txt
+          rm -f response.txt
+
           if [ $STATUS != "202" ]; then
             #if not http 202, fail the pipeline
             exit 1

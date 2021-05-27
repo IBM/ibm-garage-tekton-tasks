@@ -101,6 +101,36 @@ spec:
               name: ibm-entitled-registry-credentials
               key: IBM_ENTITLED_REGISTRY_PASSWORD
               optional: true
+        - name: VAULT_INSTANCE_ID
+          valueFrom:
+            secretKeyRef:
+              name: portieris-keys
+              key: vault-instance-id
+              optional: true
+        - name: VAULT_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: portieris-keys
+              key: vault-key-id
+              optional: true
+        - name: VAULT_URL
+          valueFrom:
+            secretKeyRef:
+              name: portieris-keys
+              key: vault-url
+              optional: true
+        - name: SIGNATURE_FINGERPRINT
+          valueFrom:
+            secretKeyRef:
+              name: portieris-keys
+              key: portieris-signature-fingerprint
+              optional: true
+        - name: IBM_CLOUD_APIKEY
+          valueFrom:
+            secretKeyRef:
+              key: APIKEY
+              name: ibmcloud-apikey
+              optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
@@ -110,13 +140,60 @@ spec:
         APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
         if [[ -n "${IBM_ENTITLED_REGISTRY_USER}" ]] && [[ -n "${IBM_ENTITLED_REGISTRY_PASSWORD}" ]]; then
           buildah login -u ${IBM_ENTITLED_REGISTRY_USER} -p ${IBM_ENTITLED_REGISTRY_PASSWORD} cp.icr.io
-          echo "buildah login -u "${IBM_ENTITLED_REGISTRY_USER}" -p "xxxxx" cp.icr.io"
+          echo "buildah login -u \"${IBM_ENTITLED_REGISTRY_USER}\" -p \"xxxxx\" cp.icr.io"
         fi
         buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
         set +x
         if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
           buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
-          echo "buildah login -u "${REGISTRY_USER}" -p "xxxxx" "$(params.image-server)""
+          echo "buildah login -u \"${REGISTRY_USER}\" -p \"xxxxx\" \"$(params.image-server)\""
         fi
-        set -x
-        buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+
+        SIGNING_PARAMETERS=""
+        if [[ -n "$SIGNATURE_FINGERPRINT" ]] ; then
+        
+          echo "Image signing parameters found.  Attempting to sign the image."
+          SIGNING_PARAMETERS="--sign-by $SIGNATURE_FINGERPRINT"
+
+          yum install jq -y
+        
+          echo "Getting IAM Token"
+          curl -s -o token.txt \
+            -X POST "https://iam.cloud.ibm.com/identity/token" \
+            --header "Content-Type: application/x-www-form-urlencoded" \
+            --header "Accept: application/json"  \
+            --data-urlencode "grant_type=urn:ibm:params:oauth:grant-type:apikey" \
+            --data-urlencode "apikey=${IBM_CLOUD_APIKEY}"
+
+          IAM_TOKEN=$(jq ".access_token" -r token.txt)
+
+          echo "Getting private key from keystore for image signing"
+          curl -s -o payload \
+            "${VAULT_URL}/api/v2/keys/${VAULT_KEY_ID}" \
+            -H "Authorization: Bearer ${IAM_TOKEN}"   \
+            -H "Content-Type: application/json" \
+            -H "bluemix-instance: ${VAULT_INSTANCE_ID}"
+
+          ENCODEDKEY=$(jq ".resources[0].payload" -r payload)
+          echo $ENCODEDKEY > encodedkey
+          base64 -d encodedkey > decodedkey
+
+          echo "Importing key"
+          gpg --import decodedkey
+        fi
+
+
+
+        COMMAND="buildah ${SIGNING_PARAMETERS} --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}"
+        echo $COMMAND
+        ${COMMAND}
+
+        if [[ -n "$SIGNATURE_FINGERPRINT" ]] ; then 
+
+          # cleanup image signing artifacts
+          rm -f token.txt
+          rm -f payload
+          rm -f encodedkey
+          rm -f decodedkey
+          rm -rf /tekton/home/.gnupg
+        fi
