@@ -7,9 +7,39 @@ spec:
     - name: image-to
       type: string
     - name: tools-image
-      default: garagecatalyst/ibmcloud-dev:1.1.3
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
     - name: source-dir
       default: /source
+    - name: ce_deploy
+      default: "false"
+      type: string
+    - name: ce_project_name
+      default: ""
+      type: string
+    - name: ce_app_name
+      type: string
+      default: ""
+    - name: ce_image_access
+      type: string
+      default: ""
+    - name: ce_region
+      type: string
+      default: ""
+    - name: ce_resource_group
+      type: string
+      default: ""
+    - name: ce_cpu
+      default: "0.5"
+      type: string
+    - name: ce_memory
+      default: "1G"
+      type: string
+    - name: ce_min_scale
+      default: "0"
+      type: string
+    - name: ce_max_scale
+      default: "10"
+      type: string
   volumes:
     - name: source
       emptyDir: {}
@@ -22,76 +52,12 @@ spec:
       image: $(params.tools-image)
       workingdir: $(params.source-dir)
       env:
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
         - name: APIKEY
           valueFrom:
             secretKeyRef:
               name: ibmcloud-apikey
               key: APIKEY
               optional: true
-        - name: CE_DEPLOY
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_DEPLOY
-              optional: false 
-        - name: CE_PROJECT_NAME
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_PROJECT_NAME
-              optional: true 
-        - name: CE_APP_NAME
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_APP_NAME
-              optional: true 
-        - name: CE_IMAGE_ACCESS
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_IMAGE_ACCESS
-              optional: true 
-        - name: CE_REGION
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_REGION
-              optional: true 
-        - name: CE_RESOURCE_GROUP
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_RESOURCE_GROUP
-              optional: true 
-        - name: CE_CPU
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_CPU
-              optional: true 
-        - name: CE_MEMORY
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_MEMORY
-              optional: true 
-        - name: CE_MIN_SCALE
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_MIN_SCALE
-              optional: true 
-        - name: CE_MAX_SCALE
-          valueFrom:
-            secretKeyRef:
-              name: codeengine-access
-              key: CE_MAX_SCALE
-              optional: true 
       resources: {}         
       script: |
         #!/usr/bin/env bash
@@ -101,8 +67,20 @@ spec:
         
 
         echo "assiging parameter"
+        CE_DEPLOY="$(params.ce_deploy)"
+        CE_PROJECT_NAME="$(params.ce_project_name)"
+        CE_APP_NAME="$(params.ce_app_name)"
+        CE_IMAGE_REPO="$(params.image-to)"
+        CE_IMAGE_ACCESS="$(params.ce_image_access)"
+        CE_REGION="$(params.ce_region)"
+        CE_RESOURCE_GROUP="$(params.ce_resource_group)"
+        CE_CPU="$(params.ce_cpu)"
+        CE_MEMORY="$(params.ce_memory)" 
+        CE_MIN_SCALE="$(params.ce_min_scale)"
+        CE_MAX_SCALE="$(params.ce_max_scale)"
         
-        # CE_DEPLOY="N"  -- Code Engine Deploy Flag (true or false)
+
+        # CE_DEPLOY="false"  -- Code Engine Deploy Flag (true or false)
         # CE_PROJECT_NAME="CE-POC"
         # CE_APP_NAME="java-spring"
         # CE_IMAGE_REPO="us.icr.io/appdev-ocp45-vpc/code-engine-demo-pvt" or "us.icr.io/appdev-ocp45-vpc/javaspring:0.0.1" -- not required
