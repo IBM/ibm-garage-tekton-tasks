@@ -144,8 +144,9 @@ metadata:
   name: portieris-default-cluster-image-policy
 spec:
    repositories:
-    - name: "image-registry.openshift-image-registry.svc*/*:*.*.*"
+    - name: "private.us.icr.io/your-registry-namespace/your-app"
       policy:
+        mutateImage: false
         simple:
           requirements:
           - type: "signedBy"
