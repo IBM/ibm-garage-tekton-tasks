@@ -23,7 +23,7 @@ spec:
     - name: OPM_IMAGE
       default: quay.io/ibmgaragecloud/operator-sdk:v0.10.4
     - name: BUILDER_IMAGE
-      default: quay.io/buildah/stable:v1.15.1
+      default: quay.io/buildah/stable:v1.21.0
     - name: DOCKERFILE
       default: ./index.Dockerfile
     - name: CONTEXT
@@ -160,8 +160,6 @@ spec:
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
-      securityContext:
-        privileged: true
       script: |
 
         if [[ -n "${GIT_PARENT_DIR}" ]]; then
@@ -174,11 +172,17 @@ spec:
         IMAGE_TO="$(params.image-url)"
         REGISTRY_SERVER_TO=$(echo "${IMAGE_TO}" | awk -F / '{print $1}')
 
-        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${IMAGE_TO} $(params.CONTEXT)
         set +x
         if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ ! "${REGISTRY_SERVER_TO}" =~ ":" ]]; then
           buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" ${REGISTRY_SERVER_TO}
           echo "buildah login -u "${REGISTRY_USER}" -p "xxxxx" ${REGISTRY_SERVER_TO}"
         fi
         set -x
+
+        cat > build.sh <<EOF
+        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${IMAGE_TO} $(params.CONTEXT)
         buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${IMAGE_TO}
+        EOF
+
+        chmod +x build.sh
+        buildah unshare build.sh
