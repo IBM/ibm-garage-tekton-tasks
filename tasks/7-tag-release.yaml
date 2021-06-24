@@ -89,8 +89,7 @@ spec:
           --no-npm \
           --no-git.push \
           --no-git.requireCleanWorkingDir \
-          --no-git.requireUpstream \
-          -VV
+          --no-git.requireUpstream
 
         if [[ -z "$(params.skip-push)" ]]; then
           set +x
