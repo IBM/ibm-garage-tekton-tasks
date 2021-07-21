@@ -13,10 +13,10 @@ spec:
       default: master
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
-      default: "true"
+      default: "false"
     - name: lint-dockerfile
       description: Enable the pipeline to lint the Dockerfile for best practices
-      default: "true"
+      default: "false"
   tasks:
     - name: setup
       taskRef:

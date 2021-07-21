@@ -101,8 +101,12 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: registry.redhat.io/openshift-pipelines-tech-preview/pipelines-git-init-rhel8
       env:
+        - name: https_proxy
+          value: http://10.3.0.3:3128
+        - name: http_proxy
+          value: http://10.3.0.3:3128
         - name: NAMESPACE
           valueFrom:
             fieldRef:
