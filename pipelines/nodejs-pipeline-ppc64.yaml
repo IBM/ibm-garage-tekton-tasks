@@ -82,7 +82,7 @@ spec:
           value: "$(tasks.setup.results.image-tag)"
     - name: deploy
       taskRef:
-        name: ibm-deploy
+        name: ibm-deploy-v2-7-1
       runAfter:
         - build
       params:
@@ -110,7 +110,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: health
       taskRef:
-        name: ibm-health-check
+        name: ibm-health-check-v2-7-1
       runAfter:
         - deploy
       params:
@@ -132,7 +132,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: tag-release
       taskRef:
-        name: ibm-tag-release
+        name: ibm-tag-release-v2-7-1
       runAfter:
         - health
       params:
@@ -146,7 +146,7 @@ spec:
           value: "$(tasks.setup.results.js-image)"
     - name: img-release
       taskRef:
-        name: ibm-img-release
+        name: ibm-img-release-v2-7-1
       runAfter:
         - tag-release
       params:
@@ -156,7 +156,7 @@ spec:
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
     - name: img-scan
       taskRef:
-        name: ibm-img-scan
+        name: ibm-img-scan-v2-7-1
       runAfter:
         - img-release
       params:
@@ -168,7 +168,7 @@ spec:
           value: $(tasks.setup.results.scan-ibm)
     - name: helm-release
       taskRef:
-        name: ibm-helm-release
+        name: ibm-helm-release-v2-7-1
       runAfter:
         - img-scan
       params:
@@ -188,7 +188,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: gitops
       taskRef:
-        name: ibm-gitops
+        name: ibm-gitops-v2-7-1
       runAfter:
         - helm-release
       params:
