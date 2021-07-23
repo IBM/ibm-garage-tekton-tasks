@@ -19,7 +19,7 @@ spec:
     - name: source-dir
       default: /source
     - name: js-image
-      default: quay.io/ibmgaragecloud/node:lts-stretch
+      default: quay.io/devopscotugno/node:850-ppc64
     - name: sonarqube-cli
       default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
   volumes:
@@ -31,7 +31,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: registry.redhat.io/openshift-pipelines-tech-preview/pipelines-git-init-rhel8
+      image: registry.redhat.io/openshift-pipelines-tech-preview/pipelines-git-init-rhel8:v1.3.1-1
       env:
         - name: https_proxy
           value: http://10.3.0.3:3128

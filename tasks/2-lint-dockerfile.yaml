@@ -33,10 +33,6 @@ spec:
       - name: source
         mountPath: $(params.source-dir)
   steps:
-    - name: https_proxy
-          value: http://10.3.0.3:3128
-    - name: http_proxy
-      value: http://10.3.0.3:3128
     - name: git-clone
       image: alpine/git
       env:

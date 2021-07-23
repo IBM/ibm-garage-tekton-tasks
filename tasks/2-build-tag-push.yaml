@@ -48,7 +48,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: registry.redhat.io/openshift-pipelines-tech-preview/pipelines-git-init-rhel8
+      image: registry.redhat.io/openshift-pipelines-tech-preview/pipelines-git-init-rhel8:v1.3.1-1
       env:
         - name: GIT_PASSWORD
           valueFrom:
