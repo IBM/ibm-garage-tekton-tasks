@@ -45,6 +45,8 @@ spec:
   steps:
     - name: git-clone
       image: quay.io/ibmgaragecloud/alpine-git
+      securityContext:
+        runAsUser: 10000
       env:
         - name: GIT_PASSWORD
           valueFrom:
@@ -71,6 +73,8 @@ spec:
         git checkout $(params.git-revision)
     - name: deploy
       image: $(params.tools-image)
+      securityContext:
+        runAsUser: 10000
       workingDir: $(params.source-dir)
       env:
         - name: TLS_SECRET_NAME
