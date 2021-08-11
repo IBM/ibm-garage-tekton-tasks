@@ -186,9 +186,9 @@ spec:
           value: "$(tasks.setup.results.deploy-ingress-type)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
-    - name: edge-cd
+    - name: edge-gitops
       taskRef:
-        name: ibm-gitops-edge
+        name: ibm-gitops-edge-v2-7-1
       runAfter:
         - helm-release
       params:
