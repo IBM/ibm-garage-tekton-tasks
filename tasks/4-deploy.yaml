@@ -67,8 +67,6 @@ spec:
             git clone $(params.git-url) $(params.source-dir)
         fi
         set -x
-        # Allowing next steps to have write access to cloned git repo
-        chmod -R a+w $(params.source-dir)
         cd $(params.source-dir)
         git checkout $(params.git-revision)
     - name: deploy
@@ -111,19 +109,25 @@ spec:
             INGRESS_ENABLED="true"
           fi
 
-          export CHART_ROOT=$(find . -name chart)
+          CHART_ROOT=$(find . -name chart)
           echo "CHART_ROOT: $CHART_ROOT"
 
-          FILE_NUM=$(find . -name 'Chart*.yaml' |wc -l)
+          FILE_NUM=$(find $CHART_ROOT -name 'Chart*.yaml' |wc -l)
           if [[ "${FILE_NUM}" -gt 1 ]]; then
             echo "Error: Found >1 Chart*.yaml"
             exit 1
           fi
 
-          export CHART=$(find . -name 'Chart*.yaml')
+          # Make a copy to be able to edit the chart
+          mkdir -p "$(params.source-dir)/chart-temp"
+          cp -R "$CHART_ROOT" "$(params.source-dir)/chart-temp/"
+          CHART_ROOT="$(params.source-dir)/chart-temp/chart"
+
+
+          CHART=$(find $CHART_ROOT -name 'Chart*.yaml')
           echo "CHART: $CHART"
 
-          export CHART_NAME=$(cat $CHART | yq r - name)
+          CHART_NAME=$(cat $CHART | yq r - name)
           echo "CHART_NAME: $CHART_NAME"
 
           # Update Chart name and version
