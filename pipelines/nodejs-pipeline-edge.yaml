@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: ibm-nodejs
+  name: ibm-nodejs-edge
   annotations:
     app.openshift.io/runtime: nodejs
 spec:
@@ -20,7 +20,7 @@ spec:
   tasks:
     - name: setup
       taskRef:
-        name: ibm-setup
+        name: ibm-setup-v2-7-2
       params:
         - name: git-url
           value: $(params.git-url)
@@ -32,7 +32,7 @@ spec:
           value: $(params.lint-dockerfile)
     - name: test
       taskRef:
-        name: ibm-nodejs-test
+        name: ibm-nodejs-test-v2-7-2
       runAfter:
         - setup
       params:
@@ -48,7 +48,7 @@ spec:
           value: $(tasks.setup.results.app-name)
     - name: dockerfile-lint
       taskRef:
-        name: ibm-dockerfile-lint
+        name: ibm-dockerfile-lint-v2-7-2
       runAfter:
         - test
       params:
@@ -62,7 +62,7 @@ spec:
           value: "$(tasks.setup.results.dockerfile-lint)"
     - name: build
       taskRef:
-        name: ibm-build-tag-push
+        name: ibm-build-tag-push-v2-7-2
       runAfter:
         - dockerfile-lint
       params:
@@ -82,7 +82,7 @@ spec:
           value: "$(tasks.setup.results.image-tag)"
     - name: deploy
       taskRef:
-        name: ibm-deploy
+        name: ibm-deploy-v2-7-2
       runAfter:
         - build
       params:
@@ -110,7 +110,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: health
       taskRef:
-        name: ibm-health-check
+        name: ibm-health-check-v2-7-2
       runAfter:
         - deploy
       params:
@@ -132,7 +132,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: tag-release
       taskRef:
-        name: ibm-tag-release
+        name: ibm-tag-release-v2-7-2
       runAfter:
         - health
       params:
@@ -146,7 +146,7 @@ spec:
           value: "$(tasks.setup.results.js-image)"
     - name: img-release
       taskRef:
-        name: ibm-img-release
+        name: ibm-img-release-v2-7-2
       runAfter:
         - tag-release
       params:
@@ -156,7 +156,7 @@ spec:
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
     - name: img-scan
       taskRef:
-        name: ibm-img-scan
+        name: ibm-img-scan-v2-7-2
       runAfter:
         - img-release
       params:
@@ -168,7 +168,7 @@ spec:
           value: $(tasks.setup.results.scan-ibm)
     - name: helm-release
       taskRef:
-        name: ibm-helm-release
+        name: ibm-helm-release-v2-7-2
       runAfter:
         - img-scan
       params:
@@ -188,15 +188,19 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: edge-gitops
       taskRef:
-        name: ibm-gitops-edge-v2-7-1
+        name: ibm-gitops-edge-v2-7-2
       runAfter:
         - helm-release
       params:
-        - name: app-name
+        - name: git-url
+          value: "$(tasks.setup.results.git-url)"
+        - name: git-revision
+          value: "$(tasks.setup.results.git-revision)"
+        - name: service-name
           value: "$(tasks.setup.results.app-name)"
+        - name: image-url
+          value: "$(tasks.img-release.results.image-url)"
         - name: version
           value: "$(tasks.tag-release.results.tag)"
-        - name: helm-url
-          value: $(tasks.helm-release.results.helm-url)
         - name: tools-image
-          value: "$(tasks.setup.results.tools-image)"
+          value: "ibmgaragecloud/ibmcloud-dev:1.2.2"
