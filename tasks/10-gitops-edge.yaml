@@ -62,6 +62,7 @@ spec:
             git clone $(params.git-url) $(params.source-dir)
         fi
         set -x
+        chmod -R a+w $(params.source-dir)
         cd $(params.source-dir)
         git checkout $(params.git-revision)
     - name: gitops-edge
@@ -170,6 +171,6 @@ spec:
           # Publish Service to Edge Application Manager
           hzn key create "IBM" "user@us.ibm.com"
 
-          make publish-service
+          make publish-service EAMHUB_APIKEY="${APIKEY}"
 
           echo "Edge Service registered"
