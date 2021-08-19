@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-gitops-edge
+  name: ibm-gitops-edge-v2-7-2
   annotations:
     description: Registers the image with the Edge server using the hzn cli
     app.openshift.io/description: Registers the image with the Edge server using the hzn cli
@@ -97,6 +97,24 @@ spec:
               name: edge-access
               key: HZN_CERTIFICATE
               optional: true
+        - name: OCP_REG_HOST
+          valueFrom:
+            secretKeyRef:
+              name: edge-access
+              key: OCP_REG_HOST
+              optional: true
+        - name: OCP_REG_USER
+          valueFrom:
+            secretKeyRef:
+              name: edge-access
+              key: OCP_REG_USER
+              optional: true
+        - name: OCP_REG_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: edge-access
+              key: OCP_REG_TOKEN
+              optional: true
       volumeMounts:
         - mountPath: /opt/certs
           name: icp-ca
@@ -111,7 +129,9 @@ spec:
 
           SERVICE_NAME="$(params.service-name)"
           VERSION="$(params.version)"
-          REGISTRY_SERVER_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $1}')
+          # REGISTRY_SERVER_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $1}')
+          # For EAM, need to use the external Registry host - OCP_REG_HOST stored in the secret
+          REGISTRY_SERVER_VALUE=${OCP_REG_HOST}
           REGISTRY_NAMESPACE_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $2}')
           REGISTRY_REPOSITORY_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}')
           REGISTRY_TAG_VALUE=$(echo "$(params.image-url)" | awk -F / '{print $3}' | awk -F : '{print $2}')
@@ -159,7 +179,7 @@ spec:
           {
             "HZN_ORG_ID": "${HZN_ORG_ID}",
             "MetadataVars": {
-              "DOCKER_IMAGE_BASE": "${BASE_IMAGE}",
+              "DOCKER_IMAGE_BASE": "${BASE_IMAGE}/${SERVICE_NAME}",
               "SERVICE_NAME": "${SERVICE_NAME}",
               "SERVICE_VERSION": "${VERSION}"
             }
@@ -168,9 +188,9 @@ spec:
 
           cat ./horizon/hzn.json
 
-          # Publish Service to Edge Application Manager
+          # Publish Service to Edge Application Manager HUB
           hzn key create "IBM" "user@us.ibm.com"
 
-          make publish-service EAMHUB_APIKEY="${APIKEY}"
+          make publish-service IMG_REG_USER="${OCP_REG_USER}" IMG_REG_HOST="${OCP_REG_HOST}" IMG_REG_TOKEN="${OCP_REG_TOKEN}"
 
           echo "Edge Service registered"
