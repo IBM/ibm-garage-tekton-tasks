@@ -158,13 +158,11 @@ spec:
           fi
 
           set +x
-          if [[ -z "${HZN_EXCHANGE_USER_AUTH}" ]] || [[ -z "${HZN_CERTIFICATE}" ]]; then
-            echo "Edge Credentials or Certificate not set"
+          if [[ -z "${OCP_REG_HOST}" ]] || [[ -z "${OCP_REG_USER}" ]] || [[ -z "${OCP_REG_TOKEN}" ]]; then
+            echo "OCP Registry Host and Credentials not set"
             exit 1
           fi
           set -x
-
-
 
           hzn version
 
