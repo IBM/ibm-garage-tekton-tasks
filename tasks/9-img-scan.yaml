@@ -89,7 +89,7 @@ spec:
           PATH_TO_IMAGE="/var/oci/image"
           echo -e "Trivy Security Scan image in registry"
           trivy image --exit-code 0 --input ${PATH_TO_IMAGE}
-          trivy image --exit-code 1 --severity CRITICAL --input ${PATH_TO_IMAGE}
+          trivy image --exit-code 1 --severity CRITICAL --ignore-unfixed --input ${PATH_TO_IMAGE}
           my_exit_code=$?
           echo "Scan exit code :--- $my_exit_code"
           if [ ${my_exit_code} == 1 ]; then
