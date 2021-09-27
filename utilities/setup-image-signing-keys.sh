@@ -167,10 +167,10 @@ type: Opaque
 metadata:
   name: portieris-keys
 data:
-  vault-url: "$(echo $VAULT_URL | base64)"
-  vault-instance-id: "$(echo $VAULT_INSTANCE_ID | base64)"
-  vault-key-id: "$(echo $VAULT_PRIVATE_KEY_ID | base64)"
-  portieris-signature-fingerprint: "$(echo $KEY_FINGERPRINT | base64)"
+  vault-url: "$(echo -n $VAULT_URL | base64)"
+  vault-instance-id: "$(echo -n $VAULT_INSTANCE_ID | base64)"
+  vault-key-id: "$(echo -n $VAULT_PRIVATE_KEY_ID | base64)"
+  portieris-signature-fingerprint: "$(echo -n $KEY_FINGERPRINT | base64)"
   
 EOL
 oc apply -f portieris-secrets.yml
