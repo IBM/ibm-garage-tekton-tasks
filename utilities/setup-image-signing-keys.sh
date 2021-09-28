@@ -44,7 +44,7 @@ echo "You will be prompted for additional input..."
 printf "\n\n"
 
 
-output=$(gpg --generate-key)
+output=$(gpg --default-new-key-algo rsa4096 --generate-key)
 printf "\n-----\n${output}\n-----\n\n"
 
 KEY_FINGERPRINT=$(echo "${output}" | sed -n '2p' | tr -d ' ')
