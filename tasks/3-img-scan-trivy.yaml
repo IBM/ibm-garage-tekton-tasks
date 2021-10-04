@@ -16,6 +16,9 @@ spec:
     - name: scan-image
       description: Flag indicating that a scan should be performed
       default: "false"
+    - name: trivy-ignoreUnfixed
+      description: Flag indicating that Trivy scans should ignore unfixed vulnerabilities 
+      default: "true"
     - name: SKOPEO_IMAGE
       default: quay.io/containers/skopeo:v1.1.0
     - name: IMAGE_FROM_TLS_VERIFY
@@ -83,7 +86,7 @@ spec:
           PATH_TO_IMAGE="/var/oci/image"
           echo -e "Trivy Security Scan image in registry"
           trivy image --exit-code 0 --input ${PATH_TO_IMAGE}
-          trivy image --exit-code 1 --severity CRITICAL --input ${PATH_TO_IMAGE}
+          TRIVY_IGNORE_UNFIXED="$(params.trivy-ignoreUnfixed)" trivy image --exit-code 1 --severity CRITICAL --input ${PATH_TO_IMAGE}
           my_exit_code=$?
           echo "Scan exit code :--- $my_exit_code"
           if [ ${my_exit_code} == 1 ]; then
