@@ -45,6 +45,10 @@ spec:
           value: "$(tasks.setup.results.image-repository)"
         - name: image-tag
           value: "$(tasks.setup.results.image-tag)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"
     - name: smoke-tests-mq
       taskRef:
         name: ibm-smoke-tests-mq
@@ -73,6 +77,10 @@ spec:
           value: "$(tasks.setup.results.deploy-ingress-type)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"
     - name: tag-release
       taskRef:
         name: ibm-tag-release
@@ -87,6 +95,10 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: js-image
           value: "$(tasks.setup.results.js-image)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"
     - name: img-release
       taskRef:
         name: ibm-img-release
@@ -109,6 +121,10 @@ spec:
           value: $(tasks.setup.results.scan-trivy)
         - name: scan-ibm
           value: $(tasks.setup.results.scan-ibm)
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"
     - name: helm-release
       taskRef:
         name: ibm-helm-release
@@ -129,6 +145,10 @@ spec:
           value: "$(tasks.setup.results.deploy-ingress-type)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"
     - name: gitops
       taskRef:
         name: ibm-gitops
@@ -143,3 +163,7 @@ spec:
           value: $(tasks.helm-release.results.helm-url)
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"

@@ -39,6 +39,10 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: js-image
           value: "$(tasks.setup.results.js-image)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"
     - name: build
       taskRef:
         name: ibm-operator-catalog-build
@@ -53,6 +57,10 @@ spec:
           value: "$(tasks.setup.results.source-dir)"
         - name: image-url
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"
     - name: gitops
       taskRef:
         name: ibm-operator-catalog-gitops
@@ -69,3 +77,7 @@ spec:
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
         - name: tools-image
           value: "$(tasks.setup.results.tools-image)"
+        - name: http-proxy
+          value: "$(tasks.setup.results.http-proxy)"
+        - name: https-proxy
+          value: "$(tasks.setup.results.https-proxy)"

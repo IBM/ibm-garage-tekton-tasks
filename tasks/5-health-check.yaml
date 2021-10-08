@@ -29,6 +29,18 @@ spec:
       default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
     - name: resource-type
       default: ""
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
+  stepTemplate:
+    env:
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
   steps:
     - name: health-check
       image: $(params.tools-image)

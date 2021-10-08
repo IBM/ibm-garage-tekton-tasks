@@ -22,7 +22,18 @@ spec:
       description: The unique ID of the profile.
     - name: group_profile_id
       description: The ID of the profile group.
-
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
+  stepTemplate:
+    env:
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
   steps:
     - name: scc-initiator
       image: $(params.tools-image)
@@ -105,4 +116,3 @@ spec:
           else
             exit 0
           fi
-  

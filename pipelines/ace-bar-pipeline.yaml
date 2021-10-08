@@ -62,6 +62,10 @@ spec:
       value: $(tasks.setup.results.app-name)
     - name: ace-project
       value: $(tasks.setup.results.ace-project)
+    - name: http-proxy
+      value: "$(tasks.setup.results.http-proxy)"
+    - name: https-proxy
+      value: "$(tasks.setup.results.https-proxy)"
     runAfter:
     - setup
     taskRef:
@@ -91,6 +95,10 @@ spec:
       value: $(tasks.setup.results.deploy-ingress-type)
     - name: tools-image
       value: $(tasks.setup.results.tools-image)
+    - name: http-proxy
+      value: "$(tasks.setup.results.http-proxy)"
+    - name: https-proxy
+      value: "$(tasks.setup.results.https-proxy)"
     runAfter:
     - build
     taskRef:
@@ -116,6 +124,10 @@ spec:
       value: $(tasks.setup.results.tools-image)
     - name: resource-type
       value: $(tasks.deploy.results.resource-type)
+    - name: http-proxy
+      value: "$(tasks.setup.results.http-proxy)"
+    - name: https-proxy
+      value: "$(tasks.setup.results.https-proxy)"
     runAfter:
     - deploy
     taskRef:
@@ -131,6 +143,10 @@ spec:
       value: $(tasks.setup.results.source-dir)
     - name: js-image
       value: $(tasks.setup.results.js-image)
+    - name: http-proxy
+      value: "$(tasks.setup.results.http-proxy)"
+    - name: https-proxy
+      value: "$(tasks.setup.results.https-proxy)"
     runAfter:
     - health
     taskRef:
@@ -142,6 +158,10 @@ spec:
       value: $(tasks.setup.results.image-url)
     - name: image-to
       value: $(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)
+    - name: http-proxy
+      value: "$(tasks.setup.results.http-proxy)"
+    - name: https-proxy
+      value: "$(tasks.setup.results.https-proxy)"
     runAfter:
     - tag-release
     taskRef:
@@ -155,6 +175,10 @@ spec:
       value: $(tasks.setup.results.scan-trivy)
     - name: scan-ibm
       value: $(tasks.setup.results.scan-ibm)
+    - name: http-proxy
+      value: "$(tasks.setup.results.http-proxy)"
+    - name: https-proxy
+      value: "$(tasks.setup.results.https-proxy)"
     runAfter:
     - img-release
     taskRef:
@@ -180,6 +204,10 @@ spec:
         value: "$(tasks.setup.results.deploy-ingress-type)"
       - name: tools-image
         value: "$(tasks.setup.results.tools-image)"
+      - name: http-proxy
+        value: "$(tasks.setup.results.http-proxy)"
+      - name: https-proxy
+        value: "$(tasks.setup.results.https-proxy)"
   - name: gitops
     params:
     - name: app-name
@@ -190,6 +218,10 @@ spec:
       value: $(tasks.helm-release.results.helm-url)
     - name: tools-image
       value: $(tasks.setup.results.tools-image)
+    - name: http-proxy
+      value: "$(tasks.setup.results.http-proxy)"
+    - name: https-proxy
+      value: "$(tasks.setup.results.https-proxy)"
     runAfter:
     - helm-release
     taskRef:
