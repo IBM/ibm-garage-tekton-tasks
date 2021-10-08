@@ -20,12 +20,23 @@ spec:
       default: ""
     - name: js-image
       default: quay.io/ibmgaragecloud/node:lts-stretch
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
   results:
     - name: tag
   volumes:
     - name: source
       emptyDir: {}
   stepTemplate:
+    env:
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
     volumeMounts:
       - name: source
         mountPath: $(params.source-dir)

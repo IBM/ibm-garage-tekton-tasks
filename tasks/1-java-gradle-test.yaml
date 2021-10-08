@@ -24,6 +24,12 @@ spec:
       default: build
     - name: sonarqube-cli
       default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
   volumes:
     - name: source
       emptyDir: {}
@@ -31,6 +37,10 @@ spec:
     env:
       - name: GRADLE_USER_HOME
         value: $(params.source-dir)
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
     volumeMounts:
       - name: source
         mountPath: $(params.source-dir)

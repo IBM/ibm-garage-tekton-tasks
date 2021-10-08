@@ -68,6 +68,12 @@ spec:
     - name: lint-dockerfile
       description: Flag indication that Dockerfile will be linted
       default: "true"
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
   results:
     - name: git-url
     - name: git-revision
@@ -92,6 +98,8 @@ spec:
     - name: scan-ibm
     - name: ace-project
     - name: dockerfile-lint
+    - name: http-proxy
+    - name: https-proxy
   volumes:
     - name: source
       emptyDir: {}
@@ -130,6 +138,18 @@ spec:
             secretKeyRef:
               name: registry-access
               key: REGISTRY_NAMESPACE
+              optional: true
+        - name: HTTP_PROXY
+          valueFrom:
+            secretKeyRef:
+              name: proxy-config
+              key: HTTP_PROXY
+              optional: true
+        - name: HTTPS_PROXY
+          valueFrom:
+            secretKeyRef:
+              name: proxy-config
+              key: HTTPS_PROXY
               optional: true
       script: |
         set +x
@@ -278,3 +298,15 @@ spec:
         echo -n "${PERFORM_LINT}">$(results.dockerfile-lint.path)
 
         for f in /tekton/results/*; do echo "results.$(basename $f)=$(cat $f)"; done
+
+        if [[ -n "$(params.http-proxy)" ]]; then
+          echo "$(params.http-proxy)" > $(results.http-proxy.path)
+        else
+          echo "${HTTP_PROXY}" > $(results.http-proxy.path)
+        fi
+
+        if [[ -n "$(params.https-proxy)" ]]; then
+          echo "$(params.https-proxy)" > $(results.https-proxy.path)
+        else
+          echo "${HTTPS_PROXY}" > $(results.https-proxy.path)
+        fi

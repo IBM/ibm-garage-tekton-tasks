@@ -39,6 +39,12 @@ spec:
     - name: STORAGE_DRIVER
       description: Set buildah storage driver
       default: overlay
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
   results:
     - name: bundle-image-url
   volumes:
@@ -47,6 +53,11 @@ spec:
     - name: source
       emptyDir: {}
   stepTemplate:
+    env:
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
     volumeMounts:
       - name: source
         mountPath: $(params.source-dir)

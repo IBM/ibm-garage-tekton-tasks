@@ -21,12 +21,24 @@ spec:
       default: "true"
     - name: IMAGE_TO_TLS_VERIFY
       default: "true"
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
   results:
     - name: image-url
       description: The url of the image to be pushed
   volumes:
     - name: varlibcontainers
       emptyDir: {}
+  stepTemplate:
+    env:
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
   steps:
     - name: image-tag
       image: $(params.SKOPEO_IMAGE)

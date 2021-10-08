@@ -41,12 +41,23 @@ spec:
     default: ""
   - name: ace-project
     default: ""
+  - name: http-proxy
+    description: Http proxy configuration
+    default: ""
+  - name: https-proxy
+    description: Https proxy configuration
+    default: ""
   volumes:
   - name: varlibcontainers
     emptyDir: {}
   - name: source
     emptyDir: {}
   stepTemplate:
+    env:
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
     volumeMounts:
     - name: source
       mountPath: $(params.source-dir)

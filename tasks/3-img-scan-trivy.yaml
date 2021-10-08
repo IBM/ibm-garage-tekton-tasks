@@ -25,9 +25,21 @@ spec:
       default: "false"
     - name: TRIVY_IMAGE
       default: quay.io/ibmgaragecloud/aquasec-trivy
+    - name: http-proxy
+      description: Http proxy configuration
+      default: ""
+    - name: https-proxy
+      description: Https proxy configuration
+      default: ""
   volumes:
     - name: oci-image
       emptyDir: {}
+  stepTemplate:
+    env:
+      - name: http_proxy
+        value: "$(params.http-proxy)"
+      - name: https_proxy
+        value: "$(params.https-proxy)"
   steps:
     - name: pull-image
       image: $(params.SKOPEO_IMAGE)
