@@ -58,7 +58,7 @@ spec:
         value: "$(params.http-proxy)"
       - name: https_proxy
         value: "$(params.https-proxy)"
-   volumeMounts:
+    volumeMounts:
       - name: source
         mountPath: $(params.source-dir)
   steps:
