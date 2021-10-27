@@ -11,6 +11,18 @@ metadata:
     version: 0.0.0
 spec:
   params:
+    - name: GIT_URL
+      default: ''
+      description: >-
+        URL of git repo, if provided it allows .trivyignore to be used from
+        project source when running scan
+      type: string
+    - name: GIT_REVISION
+      default: master
+      type: string
+    - default: /source
+      name: source-dir
+      type: string
     - name: image-url
       description: "The location of image to scan on IBM Container Registry <server>/<namespace>/<repository>:<tag>"
     - name: scan-trivy
@@ -33,7 +45,48 @@ spec:
   volumes:
     - name: oci-image
       emptyDir: {}
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    name: ''
+    resources: {}
+    volumeMounts:
+      - mountPath: $(params.source-dir)
+        name: source
   steps:
+    - name: git-clone
+      image: quay.io/ibmgaragecloud/alpine-git
+      env:
+        - name: GIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: git-credentials
+              optional: true
+        - name: GIT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: git-credentials
+              optional: true
+      resources: {}
+      script: |
+        set +x
+
+        if [ -z $(params.GIT_URL) ]; then
+            echo "No git URL provided, skipping clone"
+            exit 0
+        fi
+
+        if [[ -n "${GIT_USERNAME}" ]] && [[ -n "${GIT_PASSWORD}" ]]; then
+            git clone "$(echo $(params.GIT_URL) | awk -F '://' '{print $1}')://${GIT_USERNAME}:${GIT_PASSWORD}@$(echo $(params.GIT_URL) | awk -F '://' '{print $2}')" $(params.source-dir)
+        else
+            set -x
+            git clone $(params.GIT_URL) $(params.source-dir)
+        fi
+        set -x
+        cd $(params.source-dir)
+        git checkout $(params.GIT_REVISION)
     - name: trivy-pull
       image: $(params.SKOPEO_IMAGE)
       env:
@@ -52,6 +105,7 @@ spec:
       volumeMounts:
         - mountPath: /var/oci
           name: oci-image
+      workingDir: $(params.source-dir)
       securityContext:
         privileged: true
       script: |
@@ -82,6 +136,7 @@ spec:
       volumeMounts:
         - mountPath: /var/oci
           name: oci-image
+      workingDir: $(params.source-dir)
       script: |
           set -ex
           PERFORM_SCAN="$(params.scan-trivy)"

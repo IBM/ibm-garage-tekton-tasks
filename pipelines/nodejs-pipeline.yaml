@@ -166,6 +166,12 @@ spec:
           value: $(tasks.setup.results.scan-trivy)
         - name: scan-ibm
           value: $(tasks.setup.results.scan-ibm)
+        - name: GIT_URL
+          value: $(tasks.setup.results.git-url)
+        - name: GIT_REVISION
+          value: $(tasks.setup.results.git-revision)
+        - name: source-dir
+          value: $(tasks.setup.results.source-dir)
     - name: helm-release
       taskRef:
         name: ibm-helm-release
