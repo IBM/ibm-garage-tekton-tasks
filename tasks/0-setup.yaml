@@ -1,14 +1,14 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-setup
+  name: ibm-setup-v2-7-8
   annotations:
     description: Sets up the pipeline environment and generates/normalizes a number of param values
     app.openshift.io/description: Sets up the pipeline environment and generates/normalizes a number of param values
     app.openshift.io/vcs-ref: master
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
   labels:
-    version: 0.0.0
+    version: 2.7.8
 spec:
   params:
     - name: git-url
@@ -45,6 +45,7 @@ spec:
     - name: deploy-ingress-type
       default: "route"
     - name: health-protocol
+      description: Protocol to check health after deployment, either https or grpc, defaults to https
       default: "https"
     - name: health-endpoint
       description: Endpoint to check health after deployment, liberty uses / not /health
@@ -59,7 +60,7 @@ spec:
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+      default: quay.io/aminerachyd/ibmcloud-dev:latest
     - name: js-image
       default: quay.io/ibmgaragecloud/node:lts-stretch
     - name: ace-project
