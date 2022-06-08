@@ -1,14 +1,14 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-health-check-v2-7-8
+  name: ibm-health-check
   annotations:
     description: Performs a health check on the deployed application
     app.openshift.io/description: Performs a health check on the deployed application
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
     app.openshift.io/vcs-ref: master
   labels:
-    version: 2.7.8
+    version: 0.0.0
 spec:
   params:
     - name: app-namespace
@@ -26,7 +26,7 @@ spec:
     - name: health-curl
       default: "-k"
     - name: tools-image
-      default: quay.io/aminrachyd/ibmcloud-dev:latest
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
     - name: resource-type
       default: ""
   steps:
@@ -73,11 +73,20 @@ spec:
         # sleep for 10 seconds to allow enough time for the server to start
         sleep 10
         echo "Health check start"
-        # TODO Update curl command to grpc_health_probe
         if [[ "${PROTOCOL}" == "grpc" ]]; then
             echo "grpc protocol"
             GRPC_ADDR="${APP_NAME}:$(kubectl get service ${APP_NAME} -n ${APP_NAMESPACE} --output=jsonpath='{ .spec.ports[0].port }')"
             grpc_health_probe -addr ${GRPC_ADDR}
+            while [[ $? -ne 0 ]]; do
+                sleep 30
+                echo "Health check failure. Remaining retries: $sleep_countdown"
+                sleep_countdown=$((sleep_countdown-1))
+                if [[ $sleep_countdown -eq 0 ]]; then
+                        echo "Could not reach health endpoint: ${URL}"
+                        exit 1;
+                fi
+                grpc_health_probe -addr ${GRPC_ADDR}
+            done
         elif [[ "${PROTOCOL}" == "https" ]]; then
             while [[ $(curl ${CURL_FLAGS} -sL -w "%{http_code}\\n" "${URL}" -o /dev/null --connect-timeout 3 --max-time 5 --retry 3 --retry-max-time 30) != "200" ]]; do
                 sleep 30
