@@ -25,7 +25,7 @@ spec:
   tasks:
     - name: setup
       taskRef:
-        name: ibm-setup-v2-7-8
+        name: ibm-setup
       params:
         - name: git-url
           value: $(params.git-url)
@@ -41,7 +41,7 @@ spec:
           value: $(params.lint-dockerfile)
     - name: code-lint
       taskRef:
-        name: ibm-sonar-test-v2-7-7
+        name: ibm-sonar-test
       runAfter:
         - setup
       params:
@@ -55,7 +55,7 @@ spec:
           value: $(tasks.setup.results.app-name)
     - name: dockerfile-lint
       taskRef:
-        name: ibm-dockerfile-lint-v2-7-7
+        name: ibm-dockerfile-lint
       runAfter:
         - code-lint
       params:
@@ -69,7 +69,7 @@ spec:
           value: "$(tasks.setup.results.dockerfile-lint)"
     - name: build
       taskRef:
-        name: ibm-build-tag-push-v2-7-7
+        name: ibm-build-tag-push
       runAfter:
         - dockerfile-lint
       params:
@@ -89,7 +89,7 @@ spec:
           value: "$(tasks.setup.results.image-tag)"
     - name: deploy
       taskRef:
-        name: ibm-deploy-v2-7-7
+        name: ibm-deploy
       runAfter:
         - build
       params:
@@ -117,7 +117,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: health
       taskRef:
-        name: ibm-health-check-v2-7-8
+        name: ibm-health-check
       runAfter:
         - deploy
       params:
@@ -139,7 +139,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: tag-release
       taskRef:
-        name: ibm-tag-release-v2-7-7
+        name: ibm-tag-release
       runAfter:
         - health
       params:
@@ -153,7 +153,7 @@ spec:
           value: "$(tasks.setup.results.js-image)"
     - name: img-release
       taskRef:
-        name: ibm-img-release-v2-7-7
+        name: ibm-img-release
       runAfter:
         - tag-release
       params:
@@ -163,7 +163,7 @@ spec:
           value: "$(tasks.setup.results.image-release):$(tasks.tag-release.results.tag)"
     - name: img-scan
       taskRef:
-        name: ibm-img-scan-v2-7-7
+        name: ibm-img-scan
       runAfter:
         - img-release
       params:
@@ -175,7 +175,7 @@ spec:
           value: $(tasks.setup.results.scan-ibm)
     - name: helm-release
       taskRef:
-        name: ibm-helm-release-v2-7-7
+        name: ibm-helm-release
       runAfter:
         - img-scan
       params:
@@ -195,7 +195,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: gitops
       taskRef:
-        name: ibm-gitops-v2-7-7
+        name: ibm-gitops
       runAfter:
         - helm-release
       params:
