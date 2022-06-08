@@ -26,7 +26,7 @@ spec:
     - name: health-curl
       default: "-k"
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+      default: quay.io/aminrachyd/ibmcloud-dev:latest
     - name: resource-type
       default: ""
   steps:
