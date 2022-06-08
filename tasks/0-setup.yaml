@@ -1,14 +1,14 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: ibm-setup-v2-7-8
+  name: ibm-setup
   annotations:
     description: Sets up the pipeline environment and generates/normalizes a number of param values
     app.openshift.io/description: Sets up the pipeline environment and generates/normalizes a number of param values
     app.openshift.io/vcs-ref: master
     app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
   labels:
-    version: 2.7.8
+    version: 0.0.0
 spec:
   params:
     - name: git-url
@@ -60,7 +60,7 @@ spec:
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
     - name: tools-image
-      default: quay.io/aminerachyd/ibmcloud-dev:latest
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
     - name: js-image
       default: quay.io/ibmgaragecloud/node:lts-stretch
     - name: ace-project

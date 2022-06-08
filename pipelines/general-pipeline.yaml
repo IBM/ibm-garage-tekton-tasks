@@ -117,7 +117,7 @@ spec:
           value: "$(tasks.setup.results.tools-image)"
     - name: health
       taskRef:
-        name: ibm-health-check-v2-7-8
+        name: ibm-health-check
       runAfter:
         - deploy
       params:
