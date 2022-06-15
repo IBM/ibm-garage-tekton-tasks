@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: ibm-build-push-remote-pipeline
+  annotations:
+spec:
+  params:
+    - description: The url for the git repository
+      name: git-url
+      type: string
+    - description: The git revision (branch, tag or sha) that should be built
+      name: git-revision
+      type: string
+    - description: Image registry to store the image in
+      name: image-server
+      type: string
+    - description: Image namespace in the registry (user or organisation)
+      name: image-namespace
+      type: string
+    - description: Image repository in the registry
+      name: image-repository
+      type: string
+    - description: Image tag
+      name: image-tag
+      type: string
+  tasks:
+    - name: build
+      params:
+        - name: git-url
+          value: $(params.git-url)
+        - name: git-revision
+          value: $(params.git-revision)
+        - name: image-server
+          value: $(params.image-server)
+        - name: image-repository
+          value: $(params.image-repository)
+        - name: image-namespace
+          value: $(params.image-namespace)
+        - name: image-tag
+          value: $(params.image-tag)
+      taskRef:
+        kind: Task
+        name: ibm-build-push
