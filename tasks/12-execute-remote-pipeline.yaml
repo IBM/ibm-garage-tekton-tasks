@@ -35,20 +35,22 @@ spec:
       default: ibm-build-push-remote-pipeline
     - name: pipeline-namespace
       type: string
-      description: Which namespace is the pipeline located in?
-    - name: openshift-server-url
-      type: string
-      description: URL of the remote OpenShift API server
+      description: Namespace in which the remot epipeline is installed
     - name: openshift-token-secret
       type: string
-      description: Name of the secret holding the authentication token
+      description: Name of the secret holding the api server url and the authentication token
     - name: run-task
-      description: Runs the task on the remote cluster
+      description: Flag to run the remote task
       default: "true"
   steps:
     - name: execute-remote-pipeline-step
       image: quay.io/noseka1/execute-remote-pipeline:latest
       env:
+        - name: OPENSHIFT_URL
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshift-token-secret)
+              key: openshift-url
         - name: OPENSHIFT_TOKEN
           valueFrom:
             secretKeyRef:
@@ -63,8 +65,13 @@ spec:
 
           # Check run task parameter
           if [ "$(params.run-task)" != "true" ]; then
-            echo "Skipping remote pipeline execution"
+            echo "Build not requested for this platform, skipping remote pipeline execution"
             exit 0
+          fi
+
+          if [ -z "$OPENSHIFT_URL" ]; then
+            echo OPENSHIFT_URL is empty
+            exit 1
           fi
 
           if [ -z "$OPENSHIFT_TOKEN" ]; then
@@ -75,7 +82,7 @@ spec:
           oc login \
             --token "$OPENSHIFT_TOKEN" \
             --insecure-skip-tls-verify \
-            "$(params.openshift-server-url)"
+            "$OPENSHIFT_URL"
 
           PIPELINERUN=$(
             tkn pipeline start \

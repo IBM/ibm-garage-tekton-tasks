@@ -41,15 +41,6 @@ spec:
       description: Boolean flag to enable building on Z cluster
       default: "false"
       type: string
-    - name: x86-server-url
-      description: X86 cluster API server
-      default: ""
-    - name: power-server-url
-      description: Power cluster API server
-      default: ""
-    - name: z-server-url
-      description: Z cluster API server
-      default: ""
   tasks:
     - name: setup
       params:
