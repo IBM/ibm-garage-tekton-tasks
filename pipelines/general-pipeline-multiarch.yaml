@@ -133,8 +133,6 @@ spec:
           value: ibm-build-push-remote-pipeline
         - name: pipeline-namespace
           value: $(params.build-namespace)
-        - name: openshift-server-url
-          value: $(params.x86-server-url)
         - name: openshift-token-secret
           value: x86-cluster-secret
         - name: run-task
@@ -162,8 +160,6 @@ spec:
           value: ibm-build-push-remote-pipeline
         - name: pipeline-namespace
           value: $(params.build-namespace)
-        - name: openshift-server-url
-          value: $(params.power-server-url)
         - name: openshift-token-secret
           value: power-cluster-secret
         - name: run-task
@@ -191,8 +187,6 @@ spec:
           value: ibm-build-push-remote-pipeline
         - name: pipeline-namespace
           value: $(params.build-namespace)
-        - name: openshift-server-url
-          value: $(params.z-server-url)
         - name: openshift-token-secret
           value: z-cluster-secret
         - name: run-task
