@@ -85,6 +85,18 @@ spec:
               name: ibmcloud-config
               key: INGRESS_SUBDOMAIN
               optional: true
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              key: REGISTRY_USER
+              name: docker-registry-access
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: REGISTRY_PASSWORD
+              name: docker-registry-access
+              optional: true
       script: |
         #!/usr/bin/env bash
 
