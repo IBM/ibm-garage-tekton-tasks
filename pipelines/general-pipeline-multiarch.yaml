@@ -13,8 +13,6 @@ spec:
       description: Image registry to store the image in
     - name: image-namespace
       description: Image namespace in the registry (user or organisation)
-    - name: build-namespace
-      description: The namespace in the builder clusters on which you want to build your image
     - name: scan-image
       description: Enable the pipeline to scan the image for vulnerabilities
       default: "false"
@@ -30,15 +28,15 @@ spec:
       description: Endpoint to check health after deployment, defaults to /
       default: "/"
     - name: build-on-x86
-      description: Boolean flag to enable building on x86 cluster
+      description: Enable the pipeline to build the image on a x86 cluster (requires the cluster token to be configured in a secret)
       default: "false"
       type: string
     - name: build-on-power
-      description: Boolean flag to enable building on Power cluster
+      description: Enable the pipeline to build the image on a Power cluster (requires the cluster token to be configured in a secret)
       default: "false"
       type: string
     - name: build-on-z
-      description: Boolean flag to enable building on Z cluster
+      description: Enable the pipeline to build the image on a Z cluster (requires the cluster token to be configured in a secret)
       default: "false"
       type: string
   tasks:
@@ -125,8 +123,6 @@ spec:
           value: $(tasks.simver.results.tag)
         - name: pipeline-name
           value: ibm-build-push-remote-pipeline
-        - name: pipeline-namespace
-          value: $(params.build-namespace)
         - name: openshift-token-secret
           value: x86-cluster-secret
         - name: run-task
@@ -152,8 +148,6 @@ spec:
           value: $(tasks.simver.results.tag)
         - name: pipeline-name
           value: ibm-build-push-remote-pipeline
-        - name: pipeline-namespace
-          value: $(params.build-namespace)
         - name: openshift-token-secret
           value: power-cluster-secret
         - name: run-task
@@ -179,8 +173,6 @@ spec:
           value: $(tasks.simver.results.tag)
         - name: pipeline-name
           value: ibm-build-push-remote-pipeline
-        - name: pipeline-namespace
-          value: $(params.build-namespace)
         - name: openshift-token-secret
           value: z-cluster-secret
         - name: run-task

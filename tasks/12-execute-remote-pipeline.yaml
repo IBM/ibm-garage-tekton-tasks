@@ -33,9 +33,6 @@ spec:
       type: string
       description: Name of the pipeline to execute
       default: ibm-build-push-remote-pipeline
-    - name: pipeline-namespace
-      type: string
-      description: Namespace in which the remot epipeline is installed
     - name: openshift-token-secret
       type: string
       description: Name of the secret holding the api server url and the authentication token
@@ -79,6 +76,8 @@ spec:
             exit 1
           fi
 
+          BUILD_NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+
           oc login \
             --token "$OPENSHIFT_TOKEN" \
             --insecure-skip-tls-verify \
@@ -86,7 +85,7 @@ spec:
 
           PIPELINERUN=$(
             tkn pipeline start \
-              --namespace $(params.pipeline-namespace) \
+              --namespace $BUILD_NAMESPACE \
               --param git-url=$(params.git-url) \
               --param git-revision=$(params.git-revision) \
             	--param image-server=$(params.image-server) \
@@ -98,12 +97,12 @@ spec:
           )
 
           tkn pipelinerun logs \
-            --namespace $(params.pipeline-namespace) \
+            --namespace $BUILD_NAMESPACE \
             --follow "$PIPELINERUN"
 
           STATUS=$(
             oc get pipelinerun \
-              --namespace $(params.pipeline-namespace) \
+              --namespace $BUILD_NAMESPACE \
               "$PIPELINERUN" \
               --output jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}'
           )
@@ -111,7 +110,7 @@ spec:
           if [ "$STATUS" != True ]; then
             echo "Remote pipeline failed:"
             oc get pipelinerun \
-              --namespace $(params.pipeline-namespace) \
+              --namespace $BUILD_NAMESPACE \
               "$PIPELINERUN" \
               --output jsonpath='{.status.conditions[?(@.type=="Succeeded")].message}'
             exit 1
