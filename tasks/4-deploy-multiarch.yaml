@@ -247,11 +247,6 @@ spec:
 
         echo -e "Deploying into: ${APP_NAMESPACE}/${APP_NAME}"
 
-        # Login to registry
-        kubectl create secret docker-registry regcred --docker-server=${IMAGE_SERVER} --docker-username=${REGISTRY_USER} --docker-password=${REGISTRY_PASSWORD}
-
-        kubectl patch serviceaccount default -p '{"imagePullSecrets": [{"name": "regcred"}]}' -n ${APP_NAMESPACE}
-
         kubectl apply -n ${APP_NAMESPACE} -f ./release.yaml --validate=false > results.out
 
         cat results.out
