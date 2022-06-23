@@ -1,0 +1,60 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: manifest
+spec:
+  params:
+    - name: image-server
+      default: "quay.io"
+    - name: image-tag
+      default: "latest"
+    - name: image-namespace
+    - name: image-repository
+    - name: build-on-x86
+      default: "false"
+    - name: build-on-power
+      default: "false"
+    - name: build-on-z
+      default: "false"
+  steps:
+    - name: build-step
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: docker-registry-access
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: docker-registry-access
+              key: REGISTRY_PASSWORD
+              optional: true
+      image: quay.io/buildah/stable:v1.18.0
+      script: |
+        APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
+        BUILD_ON_X86="$(params.build-on-x86)"
+        BUILD_ON_POWER="$(params.build-on-power)"
+        BUILD_ON_Z="$(params.build-on-z)"
+        X86_APP_IMAGE="${APP_IMAGE}_x86_64"
+        POWER_APP_IMAGE="${APP_IMAGE}_ppc64le"
+        Z_APP_IMAGE="${APP_IMAGE}_s390x"
+
+        buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
+        echo "buildah login -u \"${REGISTRY_USER}\" -p \"${REGISTRY_PASSWORD}\" \"$(params.image-server)\""
+
+        buildah manifest create $APP_IMAGE
+
+        if [ "$BUILD_ON_X86" == "true" ]; then
+          buildah manifest add $APP_IMAGE docker://$X86_APP_IMAGE
+        fi
+        if [ "$BUILD_ON_POWER" == "true" ]; then
+          buildah manifest add $APP_IMAGE docker://$POWER_APP_IMAGE
+        fi
+        if [ "$BUILD_ON_Z" == "true" ]; then
+          buildah manifest add $APP_IMAGE docker://$Z_APP_IMAGE
+        fi
+
+        set -x
+        buildah manifest push --all $APP_IMAGE docker://$APP_IMAGE

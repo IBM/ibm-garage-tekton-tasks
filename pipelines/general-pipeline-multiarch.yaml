@@ -62,12 +62,6 @@ spec:
           value: $(params.health-endpoint)
       taskRef:
         name: ibm-setup
-    - name: code-test
-      runAfter:
-        - setup
-      taskRef:
-        kind: Task
-        name: code-test
     - name: code-lint
       params:
         - name: git-url
@@ -79,7 +73,7 @@ spec:
         - name: app-name
           value: $(tasks.setup.results.app-name)
       runAfter:
-        - code-test
+        - ibm-setup
       taskRef:
         kind: Task
         name: ibm-sonar-test
