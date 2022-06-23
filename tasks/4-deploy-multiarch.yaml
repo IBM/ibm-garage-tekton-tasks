@@ -252,8 +252,7 @@ spec:
 
         kubectl patch serviceaccount default -p '{"imagePullSecrets": [{"name": "regcred"}]}' -n ${APP_NAMESPACE}
 
-        kubectl apply -n ${APP_NAMESPACE} -f ./release.yaml --validate=false >
-        results.out
+        kubectl apply -n ${APP_NAMESPACE} -f ./release.yaml --validate=false > results.out
 
         cat results.out
 
