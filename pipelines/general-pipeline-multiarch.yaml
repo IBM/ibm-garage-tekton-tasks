@@ -73,7 +73,7 @@ spec:
         - name: app-name
           value: $(tasks.setup.results.app-name)
       runAfter:
-        - ibm-setup
+        - setup
       taskRef:
         kind: Task
         name: ibm-sonar-test
