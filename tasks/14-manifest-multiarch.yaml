@@ -1,7 +1,14 @@
 apiVersion: tekton.dev/v1alpha1
 kind: Task
 metadata:
-  name: manifest
+  name: ibm-manifest-multiarch
+  annotations:
+    description: Creates a manifest file on top of architecture-specific images created by previous tasks
+    app.openshift.io/description: Creates a manifest file on top of architecture-specific images created by previous tasks
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
 spec:
   params:
     - name: image-server

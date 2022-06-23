@@ -204,7 +204,7 @@ spec:
         - build-z
       taskRef:
         kind: Task
-        name: manifest
+        name: ibm-manifest-multiarch
     - name: deploy
       params:
         - name: git-url
