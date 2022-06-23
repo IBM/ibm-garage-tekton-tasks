@@ -219,9 +219,7 @@ spec:
         helm dep update "${CHART_PATH}"
 
 
-        # Using 'upgrade --install" for rolling updates. Note that subsequent
-        updates will occur in the same namespace the release is currently
-        deployed in, ignoring the explicit--namespace argument".
+        # Using 'upgrade --install" for rolling updates. Note that subsequent updates will occur in the same namespace the release is currently deployed in, ignoring the explicit--namespace argument".
 
         helm template ${RELEASE_NAME} ${CHART_PATH} \
             --namespace ${APP_NAMESPACE} \
@@ -274,7 +272,3 @@ spec:
           fi
           echo -n "${target}" | cut -f1 -d / | tee $(results.resource-type.path)
         done
-      workingDir: $(params.source-dir)
-  volumes:
-    - emptyDir: {}
-      name: source
