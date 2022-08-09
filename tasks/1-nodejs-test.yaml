@@ -86,7 +86,7 @@ spec:
         - name: PACTBROKER_URL
           valueFrom:
             secretKeyRef:
-              name: pactbroker-access
+              name: pact-broker-access
               key: PACTBROKER_URL
               optional: true
       script: |
@@ -102,7 +102,7 @@ spec:
         - name: PACTBROKER_URL
           valueFrom:
             secretKeyRef:
-              name: pactbroker-access
+              name: pact-broker-access
               key: PACTBROKER_URL
               optional: true
       script: |
