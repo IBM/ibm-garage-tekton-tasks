@@ -25,7 +25,7 @@ spec:
     - name: image-tag
       default: ""
     - name: BUILDER_IMAGE
-      default: quay.io/buildah/stable:v1.15.0
+      default: registry.redhat.io/rhel8/buildah@sha256:23fb7971ea6ac4aaaaa1139473a602df0df19222a3b5a76b551b2b9ddd92e927
     - name: DOCKERFILE
       default: ./Dockerfile
     - name: CONTEXT
@@ -33,10 +33,10 @@ spec:
     - name: TLSVERIFY
       default: "false"
     - name: FORMAT
-      default: "docker"
+      default: docker
     - name: STORAGE_DRIVER
       description: Set buildah storage driver
-      default: overlay
+      default: vfs
   volumes:
     - name: varlibcontainers
       emptyDir: {}
@@ -47,6 +47,70 @@ spec:
       - name: source
         mountPath: $(params.source-dir)
   steps:
+    - name: setup-docker-auth
+      image: $(params.BUILDER_IMAGE)
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_USER
+              optional: true
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: registry-access
+              key: REGISTRY_PASSWORD
+              optional: true
+        - name: AUTH_CONFIG
+          valueFrom:
+            secretKeyRef:
+              name: registry-auth
+              key: .dockerconfigjson
+              optional: true
+        - name: AUTH_CONFIG_OVERRIDE
+          valueFrom:
+            secretKeyRef:
+              name: registry-auth-local
+              key: .dockerconfigjson
+              optional: true
+        - name: IBM_ENTITLED_REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              name: ibm-entitled-registry-credentials
+              key: IBM_ENTITLED_REGISTRY_USER
+              optional: true
+        - name: IBM_ENTITLED_REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ibm-entitled-registry-credentials
+              key: IBM_ENTITLED_REGISTRY_PASSWORD
+              optional: true
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      script: |
+        if [[ -n "${AUTH_CONFIG_OVERRIDE}" ]]; then
+          AUTH_CONFIG="${AUTH_CONFIG_OVERRIDE}"
+        elif [[ -z "${AUTH_CONFIG}" ]]; then
+          AUTH_CONFIG="{}"
+        fi
+        
+        AUTH_FILE="/var/lib/containers/auth.json"
+        
+        echo "${AUTH_CONFIG}" > "${AUTH_FILE}"
+        
+        if [[ -n "${IBM_ENTITLED_REGISTRY_USER}" ]] && [[ -n "${IBM_ENTITLED_REGISTRY_PASSWORD}" ]]; then
+          buildah login --authfile "${AUTH_FILE}" -u ${IBM_ENTITLED_REGISTRY_USER} -p ${IBM_ENTITLED_REGISTRY_PASSWORD} cp.icr.io
+          echo "buildah login --authfile \"${AUTH_FILE}\" -u \"${IBM_ENTITLED_REGISTRY_USER}\" -p \"xxxxx\" cp.icr.io"
+        fi
+        
+        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
+          buildah login --authfile "${AUTH_FILE}" -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
+          echo "buildah login --authfile \"${AUTH_FILE}\" -u \"${REGISTRY_USER}\" -p \"xxxxx\" \"$(params.image-server)\""
+        fi
+        
+        echo "Auth file: ${AUTH_FILE}"
     - name: git-clone
       image: quay.io/ibmgaragecloud/alpine-git
       env:
@@ -76,48 +140,24 @@ spec:
     - name: build
       image: $(params.BUILDER_IMAGE)
       workingDir: $(params.source-dir)
-      env:
-        - name: REGISTRY_USER
-          valueFrom:
-            secretKeyRef:
-              name: registry-access
-              key: REGISTRY_USER
-              optional: true
-        - name: REGISTRY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: registry-access
-              key: REGISTRY_PASSWORD
-              optional: true
-        - name: IBM_ENTITLED_REGISTRY_USER
-          valueFrom:
-            secretKeyRef:
-              name: ibm-entitled-registry-credentials
-              key: IBM_ENTITLED_REGISTRY_USER
-              optional: true
-        - name: IBM_ENTITLED_REGISTRY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: ibm-entitled-registry-credentials
-              key: IBM_ENTITLED_REGISTRY_PASSWORD
-              optional: true
       volumeMounts:
         - mountPath: /var/lib/containers
           name: varlibcontainers
-      securityContext:
-        privileged: true
       script: |
         APP_IMAGE="$(params.image-server)/$(params.image-namespace)/$(params.image-repository):$(params.image-tag)"
-        if [[ -n "${IBM_ENTITLED_REGISTRY_USER}" ]] && [[ -n "${IBM_ENTITLED_REGISTRY_PASSWORD}" ]]; then
-          buildah login -u ${IBM_ENTITLED_REGISTRY_USER} -p ${IBM_ENTITLED_REGISTRY_PASSWORD} cp.icr.io
-          echo "buildah login -u \"${IBM_ENTITLED_REGISTRY_USER}\" -p \"xxxxx\" cp.icr.io"
-        fi
-        buildah --layers --storage-driver=$(params.STORAGE_DRIVER) bud --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
-        set +x
-        if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]] && [[ "$(params.image-server)" != "image-registry.openshift-image-registry.svc:5000"  ]]; then
-          buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" "$(params.image-server)"
-          echo "buildah login -u \"${REGISTRY_USER}\" -p \"xxxxx\" \"$(params.image-server)\""
-        fi
-
+        
+        AUTH_FILE="/var/lib/containers/auth.json"
+        echo "Auth file: ${AUTH_FILE}"
+        
         set -x
-        buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+        
+        buildah --storage-driver=$(params.STORAGE_DRIVER) bud \
+          --authfile "${AUTH_FILE}" \
+          --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) \
+          --no-cache -f $(params.DOCKERFILE) -t ${APP_IMAGE} $(params.CONTEXT)
+
+        buildah --storage-driver=$(params.STORAGE_DRIVER) push \
+          --authfile "${AUTH_FILE}" \
+          --tls-verify=$(params.TLSVERIFY) \
+          --digestfile ./image-digest \
+          ${APP_IMAGE} docker://${APP_IMAGE}
