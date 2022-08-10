@@ -67,10 +67,23 @@ spec:
             key: npm_config_registry
             optional: true
       script: |
-        npm install
+        if [ -f yarn.lock ]; then
+          yarn install
+        elif [ -f package-lock.json ]; then
+          npm ci
+        else
+          npm install
+        fi
+        
         if [ -d client ]; then
           cd client
-          npm install
+          if [ -f yarn.lock ]; then
+            yarn install
+          elif [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
           cd -
         fi
         npm run build --if-present
