@@ -1,7 +1,7 @@
-docker.io/alpine/git:latest=quay.io/ibmgaragecloud/alpine-git
-docker.io/gradle:jdk11=quay.io/ibmgaragecloud/gradle
-docker.io/maven:3.6.3-jdk-11-slim=quay.io/ibmgaragecloud/maven
-docker.io/aquasec/trivy:0.14.0=quay.io/ibmgaragecloud/aquasec-trivy
-docker.io/node:lts-stretch=quay.io/ibmgaragecloud/node
-docker.io/golang:stretch=quay.io/ibmgaragecloud/golang
-docker.io/sonarsource/sonar-scanner-cli:latest=quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
+docker.io/maven=quay.io/cloudnativetoolkit
+docker.io/gradle=quay.io/cloudnativetoolkit
+docker.io/node=quay.io/cloudnativetoolkit
+docker.io/golang=quay.io/cloudnativetoolkit
+docker.io/alpine/git=quay.io/cloudnativetoolkit/alpine
+docker.io/aquasec/trivy=quay.io/cloudnativetoolkit/aquasec
+docker.io/sonarsource/sonar-scanner-cli:latest=quay.io/cloudnativetoolkit/sonarsource

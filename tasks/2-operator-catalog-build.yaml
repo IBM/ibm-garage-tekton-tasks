@@ -21,7 +21,7 @@ spec:
     - name: image-url
       default: ""
     - name: OPM_IMAGE
-      default: quay.io/ibmgaragecloud/operator-sdk:v0.10.4
+      default: quay.io/cloudnativetoolkit/operator-sdk:v0.10.4
     - name: BUILDER_IMAGE
       default: quay.io/buildah/stable:v1.15.1
     - name: DOCKERFILE
@@ -48,7 +48,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

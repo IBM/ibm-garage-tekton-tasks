@@ -36,7 +36,7 @@ spec:
     - name: IMAGE_FROM_TLS_VERIFY
       default: "false"
     - name: TRIVY_IMAGE
-      default: quay.io/ibmgaragecloud/aquasec-trivy
+      default: quay.io/cloudnativetoolkit/aquasec/trivy
   volumes:
     - name: oci-image
       emptyDir: {}
@@ -50,7 +50,7 @@ spec:
         name: source
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

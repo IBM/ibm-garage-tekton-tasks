@@ -10,10 +10,23 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
-    container: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    container: registry.redhat.io/rhel8/skopeo
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Login to CNTK Quay
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_CNTK_USERNAME }}
+          password: ${{ secrets.QUAY_CNTK_TOKEN }}
 
       - name: Mirror
-        run: ./bin/mirror.sh "${{ secrets.REGISTRY_USER }}" "${{ secrets.REGISTRY_PASSWORD }}"
+        run: ./bin/mirror.sh ./mapping.txt

@@ -59,9 +59,9 @@ spec:
       description: Flag indicating that a Vulnerability Advisor scan should be performed
       default: "false"
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+      default: quay.io/cloudnativetoolkit/ibmcloud-dev:v2.0.4
     - name: js-image
-      default: quay.io/ibmgaragecloud/node:lts-stretch
+      default: quay.io/cloudnativetoolkit/node:lts-stretch
     - name: ace-project
       description: Name of the ACE Toolkit project
       default: ""
@@ -101,7 +101,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: NAMESPACE
           valueFrom:

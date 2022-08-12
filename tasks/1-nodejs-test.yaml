@@ -19,9 +19,9 @@ spec:
     - name: source-dir
       default: /source
     - name: js-image
-      default: quay.io/ibmgaragecloud/node:lts-stretch
+      default: quay.io/cloudnativetoolkit/node:lts-stretch
     - name: sonarqube-cli
-      default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
+      default: quay.io/cloudnativetoolkit/sonarsource/sonar-scanner-cli
   volumes:
     - name: source
       emptyDir: {}
@@ -31,7 +31,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

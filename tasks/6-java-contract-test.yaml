@@ -22,7 +22,7 @@ spec:
     - name: service-port
       default: "80"
     - name: gradle-image
-      default: quay.io/ibmgaragecloud/gradle:jdk11
+      default: quay.io/cloudnativetoolkit/gradle:jdk11
   volumes:
     - name: source
       emptyDir: {}
@@ -32,7 +32,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

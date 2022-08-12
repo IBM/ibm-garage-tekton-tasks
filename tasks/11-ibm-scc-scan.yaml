@@ -12,7 +12,7 @@ metadata:
 spec:
   params:
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+      default: quay.io/cloudnativetoolkit/ibmcloud-dev:v2.0.4
     - name: location
       description: Endpoint location for the security and compliance api.  Values are "us", "eu" or "asap".
       default: "us"
@@ -105,4 +105,3 @@ spec:
           else
             exit 0
           fi
-  

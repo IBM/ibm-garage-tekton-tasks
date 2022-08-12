@@ -19,11 +19,11 @@ spec:
     - name: app-name
       default: "my-java-maven-app"
     - name: maven-image
-      default: quay.io/ibmgaragecloud/maven:3.6.3-jdk-11-slim
+      default: quay.io/cloudnativetoolkit/maven:3.6.3-jdk-11-slim
     - name: sonarqube-java-bin-path
       default: target
     - name: sonarqube-cli
-      default: quay.io/ibmgaragecloud/sonarsource-sonar-scanner-cli
+      default: quay.io/cloudnativetoolkit/sonarsource/sonar-scanner-cli
   volumes:
     - name: source
       emptyDir: {}
@@ -33,7 +33,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

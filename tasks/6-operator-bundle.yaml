@@ -25,7 +25,7 @@ spec:
     - name: default-channel
       default: "alpha"
     - name: BUNDLE_IMAGE
-      default: quay.io/ibmgaragecloud/operator-sdk:v0.10.4
+      default: quay.io/cloudnativetoolkit/operator-sdk:v0.10.4
     - name: BUILDER_IMAGE
       default: registry.redhat.io/rhel8/buildah@sha256:23fb7971ea6ac4aaaaa1139473a602df0df19222a3b5a76b551b2b9ddd92e927
     - name: DOCKERFILE
@@ -119,7 +119,7 @@ spec:
         
         echo "Auth file: ${AUTH_FILE}"
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

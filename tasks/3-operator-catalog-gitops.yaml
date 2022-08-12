@@ -31,7 +31,7 @@ spec:
     - name: image-url
       default: ""
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+      default: quay.io/cloudnativetoolkit/ibmcloud-dev:v2.0.4
   volumes:
     - name: source
       emptyDir: {}
@@ -45,7 +45,7 @@ spec:
         mountPath: $(params.gitops-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

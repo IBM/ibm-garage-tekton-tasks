@@ -31,7 +31,7 @@ spec:
     - name: deploy-ingress-type
       default: "route"
     - name: tools-image
-      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+      default: quay.io/cloudnativetoolkit/ibmcloud-dev:v2.0.4
   results:
     - name: service-port
     - name: resource-type
@@ -44,7 +44,7 @@ spec:
         mountPath: $(params.source-dir)
   steps:
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:

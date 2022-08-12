@@ -117,7 +117,7 @@ spec:
         
         echo "Auth file: ${AUTH_FILE}"
     - name: git-clone
-      image: quay.io/ibmgaragecloud/alpine-git
+      image: quay.io/cloudnativetoolkit/alpine/git
       env:
         - name: GIT_PASSWORD
           valueFrom:
