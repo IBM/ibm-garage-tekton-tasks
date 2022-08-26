@@ -16,6 +16,8 @@ mkdir -p "${DIST_DIR}"
 
 RESOURCE_YAML="${DIST_DIR}/release.yaml"
 
+echo "Publishing ${VERSION_NUMBER} package to ${RESOURCE_YAML}"
+
 echo -n "" > "${RESOURCE_YAML}"
 
 # remove leading 'v', if present
