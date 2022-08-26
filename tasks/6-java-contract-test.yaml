@@ -63,29 +63,29 @@ spec:
       env:
         - name: GRADLE_USER_HOME
           value: $(params.source-dir)
-        - name: PACTBROKER_URL
+        - name: PACT_BROKER_URL
           valueFrom:
             secretKeyRef:
-              name: pactbroker-access
-              key: PACTBROKER_URL
+              name: pact-broker-access
+              key: PACT_BROKER_URL
               optional: true
-        - name: PACTBROKER_USER
+        - name: PACT_BROKER_USER
           valueFrom:
             secretKeyRef:
-              name: pactbroker-access
-              key: PACTBROKER_USER
+              name: pact-broker-access
+              key: PACT_BROKER_USER
               optional: true
-        - name: PACTBROKER_PASSWORD
+        - name: PACT_BROKER_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: pactbroker-access
-              key: PACTBROKER_PASSWORD
+              name: pact-broker-access
+              key: PACT_BROKER_PASSWORD
               optional: true
       script: |
           #!/usr/bin/env bash
           set -ex
 
-          if [[ -z "${PACTBROKER_URL}" ]]; then
+          if [[ -z "${PACT_BROKER_URL}" ]]; then
             echo "PactBroker url not set. Skipping pact verification"
             exit 0
           fi
@@ -102,7 +102,7 @@ spec:
           PORT=$(params.service-port)
 
           ./gradlew pactVerify \
-            -PpactBrokerUrl=${PACTBROKER_URL} \
+            -PpactBrokerUrl=${PACT_BROKER_URL} \
             -PpactProtocol=${PROTOCOL} \
             -PpactHost=${HOST} \
             -PpactPort=${PORT} \

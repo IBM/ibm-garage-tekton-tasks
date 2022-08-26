@@ -67,6 +67,8 @@ spec:
             git clone $(params.git-url) $(params.source-dir)
         fi
         set -x
+        # Allowing next steps to have write access to cloned git repo
+        chmod -R a+w $(params.source-dir)
         cd $(params.source-dir)
         git checkout $(params.git-revision)
     - name: deploy
