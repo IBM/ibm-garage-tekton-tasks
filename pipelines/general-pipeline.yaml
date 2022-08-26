@@ -16,6 +16,9 @@ spec:
     - name: lint-dockerfile
       description: Enable the pipeline to lint the Dockerfile for best practices
       default: "true"
+    - name: health-protocol
+      description: Protocol to check health after deployment, either https or grpc, defaults to https
+      default: "https"
     - name: health-endpoint
       description: Endpoint to check health after deployment, defaults /
       default: "/"
@@ -32,6 +35,8 @@ spec:
           value: $(params.scan-image)
         - name: health-endpoint
           value: $(params.health-endpoint)
+        - name: health-protocol
+          value: $(params.health-protocol)
         - name: lint-dockerfile
           value: $(params.lint-dockerfile)
     - name: code-lint

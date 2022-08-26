@@ -1,0 +1,117 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: ibm-execute-remote-pipeline
+  annotations:
+    description: Task to trigger remote pipeline on another OpenShift cluster, requires the pipeline to be already installed on the remote cluster.
+    app.openshift.io/description: Task to trigger remote pipeline on another OpenShift cluster, requires the pipeline to be already installed on the remote cluster.
+    app.openshift.io/vcs-uri: https://github.com/IBM/ibm-garage-tekton-tasks
+    app.openshift.io/vcs-ref: master
+  labels:
+    version: 0.0.0
+spec:
+  params:
+    - name: git-url
+      type: string
+      description: Git url of the repo to execute the pipeline on
+    - name: git-revision
+      type: string
+      description: The git revision (branch, tag or sha) that should be built
+    - name: image-server
+      type: string
+      description: Image registry to store the image in
+    - name: image-namespace
+      type: string
+      description: Image namespace in the registry (user or organisation)
+    - name: image-repository
+      type: string
+      description: Image repository in the registry
+    - name: image-tag
+      type: string
+      description: Image tag
+    - name: pipeline-name
+      type: string
+      description: Name of the pipeline to execute
+      default: ibm-build-push-remote-pipeline
+    - name: openshift-token-secret
+      type: string
+      description: Name of the secret holding the api server url and the authentication token
+    - name: run-task
+      description: Flag to run the remote task
+      default: "true"
+  steps:
+    - name: execute-remote-pipeline-step
+      image: quay.io/noseka1/execute-remote-pipeline:latest
+      env:
+        - name: OPENSHIFT_URL
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshift-token-secret)
+              key: openshift-url
+        - name: OPENSHIFT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: $(params.openshift-token-secret)
+              key: openshift-token
+      command:
+        - /bin/bash
+      args:
+        - -c
+        - |
+          set -e
+
+          # Check run task parameter
+          if [ "$(params.run-task)" != "true" ]; then
+            echo "Build not requested for this platform, skipping remote pipeline execution"
+            exit 0
+          fi
+
+          if [ -z "$OPENSHIFT_URL" ]; then
+            echo OPENSHIFT_URL is empty
+            exit 1
+          fi
+
+          if [ -z "$OPENSHIFT_TOKEN" ]; then
+            echo OPENSHIFT_TOKEN is empty
+            exit 1
+          fi
+
+          BUILD_NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+
+          oc login \
+            --token "$OPENSHIFT_TOKEN" \
+            --insecure-skip-tls-verify \
+            "$OPENSHIFT_URL"
+
+          PIPELINERUN=$(
+            tkn pipeline start \
+              --namespace $BUILD_NAMESPACE \
+              --param git-url=$(params.git-url) \
+              --param git-revision=$(params.git-revision) \
+            	--param image-server=$(params.image-server) \
+            	--param image-namespace=$(params.image-namespace) \
+            	--param image-repository=$(params.image-repository) \
+            	--param image-tag=$(params.image-tag) \
+              $(params.pipeline-name) \
+              | sed --quiet 's/Pipelinerun started: \(.*\)/\1/p'
+          )
+
+          tkn pipelinerun logs \
+            --namespace $BUILD_NAMESPACE \
+            --follow "$PIPELINERUN"
+
+          STATUS=$(
+            oc get pipelinerun \
+              --namespace $BUILD_NAMESPACE \
+              "$PIPELINERUN" \
+              --output jsonpath='{.status.conditions[?(@.type=="Succeeded")].status}'
+          )
+
+          if [ "$STATUS" != True ]; then
+            echo "Remote pipeline failed:"
+            oc get pipelinerun \
+              --namespace $BUILD_NAMESPACE \
+              "$PIPELINERUN" \
+              --output jsonpath='{.status.conditions[?(@.type=="Succeeded")].message}'
+            exit 1
+          fi
