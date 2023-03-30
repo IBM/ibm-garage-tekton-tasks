@@ -121,3 +121,7 @@ spec:
 
         set -x
         buildah --storage-driver=$(params.STORAGE_DRIVER) push --tls-verify=$(params.TLSVERIFY) --digestfile ./image-digest ${APP_IMAGE} docker://${APP_IMAGE}
+      securityContext:
+        capabilities:
+          add:
+            - SETFCAP
