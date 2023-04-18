@@ -1,0 +1,128 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: ibm-codeengine-deploy
+spec:
+  params:
+    - name: image-to
+      type: string
+    - name: tools-image
+      default: quay.io/ibmgaragecloud/ibmcloud-dev:v2.0.4
+    - name: source-dir
+      default: /source
+    - name: ce_deploy
+      default: "false"
+      type: string
+    - name: ce_project_name
+      default: ""
+      type: string
+    - name: ce_app_name
+      type: string
+      default: ""
+    - name: ce_image_access
+      type: string
+      default: ""
+    - name: ce_region
+      type: string
+      default: ""
+    - name: ce_resource_group
+      type: string
+      default: ""
+    - name: ce_cpu
+      default: "0.5"
+      type: string
+    - name: ce_memory
+      default: "1G"
+      type: string
+    - name: ce_min_scale
+      default: "0"
+      type: string
+    - name: ce_max_scale
+      default: "10"
+      type: string
+  volumes:
+    - name: source
+      emptyDir: {}
+  stepTemplate:
+    volumeMounts:
+      - name: source
+        mountPath: $(params.source-dir)
+  steps:
+    - name: codeengine-deploy
+      image: $(params.tools-image)
+      workingdir: $(params.source-dir)
+      env:
+        - name: APIKEY
+          valueFrom:
+            secretKeyRef:
+              name: ibmcloud-apikey
+              key: APIKEY
+              optional: true
+      resources: {}         
+      script: |
+        #!/usr/bin/env bash
+        set -ex
+        echo "Code Engine Deploy Process getting Started"
+        ibmcloud plugin install code-engine
+        
+
+        echo "assiging parameter"
+        CE_DEPLOY="$(params.ce_deploy)"
+        CE_PROJECT_NAME="$(params.ce_project_name)"
+        CE_APP_NAME="$(params.ce_app_name)"
+        CE_IMAGE_REPO="$(params.image-to)"
+        CE_IMAGE_ACCESS="$(params.ce_image_access)"
+        CE_REGION="$(params.ce_region)"
+        CE_RESOURCE_GROUP="$(params.ce_resource_group)"
+        CE_CPU="$(params.ce_cpu)"
+        CE_MEMORY="$(params.ce_memory)" 
+        CE_MIN_SCALE="$(params.ce_min_scale)"
+        CE_MAX_SCALE="$(params.ce_max_scale)"
+        
+
+        # CE_DEPLOY="false"  -- Code Engine Deploy Flag (true or false)
+        # CE_PROJECT_NAME="CE-POC"
+        # CE_APP_NAME="java-spring"
+        # CE_IMAGE_REPO="us.icr.io/appdev-ocp45-vpc/code-engine-demo-pvt" or "us.icr.io/appdev-ocp45-vpc/javaspring:0.0.1" -- not required
+        # CE_IMAGE_ACCESS="ibm-registry-us"
+        # CE_REGION="us-south"
+        # CE_RESOURCE_GROUP="cloud-native-development" or "appdev-cloud-native"
+        # CE_CPU="0.5"
+        # CE_MEMORY="1G"
+        # CE_MIN_SCALE="0"
+        # CE_MAX_SCALE="10"
+
+        if [[ ! "${CE_DEPLOY}" =~ true ]]; then
+          echo "Code Engine Deployment is not Enabled"
+          exit 0
+        fi
+        
+        CE_IMAGE_REPO="$(params.image-to)"
+        echo "IMG Tag "${CE_IMAGE_REPO}
+
+        set -o
+        ibmcloud login --apikey ${APIKEY} -r ${CE_REGION} -g ${CE_RESOURCE_GROUP}
+        set +o
+
+        ibmcloud ce project select -n ${CE_PROJECT_NAME}
+
+        set +e
+        APP_EXIST=$(ibmcloud ce app get --name ${CE_APP_NAME})
+        echo "APP EXIST "${APP_EXIST}
+        set -e 
+        
+
+        if [[ "${APP_EXIST}" == "null" ]] || [[ -z  "${APP_EXIST}" ]]; then 
+          echo "Application doesn't exists"
+          # ibmcloud ce app create --name ce-springbt-pvt-app --image us.icr.io/appdev-ocp45-vpc/code-engine-demo-pvt --registry-secret ibm-registry-us
+          ibmcloud ce app create --name ${CE_APP_NAME} --image ${CE_IMAGE_REPO}  --registry-secret ${CE_IMAGE_ACCESS} --cpu ${CE_CPU} --memory ${CE_MEMORY} --min ${CE_MIN_SCALE} --max ${CE_MAX_SCALE}
+        else
+          echo "Application name already exists"
+          # ibmcloud ce app update --name ce-springbt-pvt-app --image us.icr.io/appdev-ocp45-vpc/code-engine-demo-pvt --registry-secret ibm-registry-us
+          ibmcloud ce app update --name ${CE_APP_NAME} --image ${CE_IMAGE_REPO}  --registry-secret ${CE_IMAGE_ACCESS} --cpu ${CE_CPU} --memory ${CE_MEMORY} --min ${CE_MIN_SCALE} --max ${CE_MAX_SCALE}
+        fi
+
+        
+        echo "Code Engine Deploy Process completed"
+        
+      
