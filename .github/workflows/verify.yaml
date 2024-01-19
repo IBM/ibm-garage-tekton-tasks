@@ -22,8 +22,8 @@ jobs:
         run: |
           BRANCH=${GITHUB_REF#refs/heads/}
           echo "Running against branch: ${BRANCH}"
-          echo "::set-output name=branch::${BRANCH}"
-          echo "::set-output name=project::tools-${BRANCH}"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          echo "project=tools-${BRANCH}" >> "$GITHUB_OUTPUT"
 
       - name: Cluster login
         run: oc login -u ${{ secrets.CLUSTER_USER }} -p ${{ secrets.CLUSTER_PASSWORD }} ${{ secrets.CLUSTER_SERVER }}
